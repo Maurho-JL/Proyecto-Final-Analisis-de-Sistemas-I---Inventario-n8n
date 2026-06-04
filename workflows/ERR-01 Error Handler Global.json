@@ -1,0 +1,159 @@
+{
+  "name": "ERR-01 Error Handler Global",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [
+        -80,
+        0
+      ],
+      "id": "54c373b2-9a56-4b5f-9623-53eeafbe48e4",
+      "name": "Error Trigger"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SET search_path TO inventario;\n\nINSERT INTO log_errores (workflow_nombre, nodo, mensaje_error, datos_entrada)\nVALUES (\n    '{{ $json.workflow_nombre }}',\n    '{{ $json.nodo }}',\n    '{{ $json.mensaje_error }}',\n    '{{ $json.datos_entrada }}'\n);",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        240,
+        0
+      ],
+      "id": "1de055e7-5eb7-464e-9dc7-f06cefa56212",
+      "name": "Execute a SQL query",
+      "credentials": {
+        "postgres": {
+          "id": "9VBZqOBt6WDgRTdn",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "7388546974",
+        "text": "=Error en el sistema\n\nWorkflow: {{ $json.workflow_nombre }}\nNodo: {{ $json.nodo }}\nError: {{ $json.mensaje_error }}\nFecha: {{ $now.format('dd/MM/yyyy HH:mm') }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        416,
+        0
+      ],
+      "id": "4e8d7f1a-45fd-4848-83b0-9e653e84a57e",
+      "name": "Send a text message",
+      "webhookId": "867d4ef7-ac29-4895-8314-0f97e05381a5",
+      "credentials": {
+        "telegramApi": {
+          "id": "RkPVrYJQCEMJszGV",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fromEmail": "mjomlem.21@gmail.com",
+        "toEmail": "mjomlem.21@gmail.com",
+        "subject": "=Error en workflow — {{ $('Code in JavaScript').first().json.workflow_nombre }}",
+        "html": "=<h2>Error detectado en el sistema</h2>\n<table border=\"1\" cellpadding=\"8\" style=\"border-collapse:collapse;width:100%\">\n  <tr style=\"background:#fdecea\"><th>Campo</th><th>Valor</th></tr>\n  <tr><td>Workflow</td><td>{{ $('Code in JavaScript').first().json.workflow_nombre }}</td></tr>\n  <tr><td>Nodo</td><td>{{ $('Code in JavaScript').first().json.nodo }}</td></tr>\n  <tr><td>Error</td><td><b>{{ $('Code in JavaScript').first().json.mensaje_error }}</b></td></tr>\n  <tr><td>Fecha</td><td>{{ $now.format('dd/MM/yyyy HH:mm') }}</td></tr>\n</table>",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        624,
+        0
+      ],
+      "id": "a341a935-fc56-4908-8e47-e608a424cef6",
+      "name": "Send an Email",
+      "webhookId": "285c6472-d74e-4c24-bf00-e715bf86ff6e",
+      "credentials": {
+        "smtp": {
+          "id": "9HwKAKjIDJqeSz1u",
+          "name": "Gmail SMTP"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const raw = $input.first().json;\n\n// n8n pasa el error en diferentes rutas dependiendo de la versión\nconst workflowNombre = raw.workflow?.name || \n                       raw.workflowData?.name || \n                       'Desconocido';\n\nconst nodo = raw.execution?.lastNodeExecuted || \n             raw.lastNodeExecuted || \n             'Desconocido';\n\nconst mensajeError = raw.error?.message || \n                     raw.error?.description ||\n                     raw.message ||\n                     raw.description ||\n                     JSON.stringify(raw.error) ||\n                     'Ver datos de entrada';\n\nconst datosEntrada = JSON.stringify({\n    workflow: workflowNombre,\n    nodo: nodo,\n    error: raw.error,\n    execution: raw.execution?.id || raw.id\n});\n\nreturn [{\n    json: {\n        workflow_nombre: workflowNombre,\n        nodo: nodo,\n        mensaje_error: mensajeError,\n        datos_entrada: datosEntrada\n    }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        96,
+        0
+      ],
+      "id": "fa88130f-391f-419b-aa92-db3ea8e4841c",
+      "name": "Code in JavaScript"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Error Trigger": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute a SQL query": {
+      "main": [
+        [
+          {
+            "node": "Send a text message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send a text message": {
+      "main": [
+        [
+          {
+            "node": "Send an Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Execute a SQL query",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
+    "errorWorkflow": "4EOToqAqaYg788QW",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "versionId": "53cc9e7c-6729-4b0c-8961-59da39fa6bf5",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "a754d5b26c3afea1a6891fc0c770d0c72bb86b3273f13b42c964bbca1908b096"
+  },
+  "id": "4EOToqAqaYg788QW",
+  "tags": []
+}

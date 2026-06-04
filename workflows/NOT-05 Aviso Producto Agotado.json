@@ -1,0 +1,170 @@
+{
+  "name": "NOT-05 Aviso Producto Agotado",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        0,
+        0
+      ],
+      "id": "fbb41efe-19b7-4440-85c6-15a0b14f9cd7",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SET search_path TO inventario;\n\nSELECT \n    p.codigo,\n    p.nombre        AS producto,\n    c.nombre        AS categoria,\n    p.stock_actual\nFROM productos p\nJOIN categorias c ON c.id = p.categoria_id\nWHERE p.stock_actual = 0\nORDER BY c.nombre, p.nombre;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        208,
+        0
+      ],
+      "id": "4206ab38-01f2-414c-9e53-5c3fcf72e137",
+      "name": "Execute a SQL query",
+      "credentials": {
+        "postgres": {
+          "id": "9VBZqOBt6WDgRTdn",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "29d1be8f-fdfb-4d27-9310-1c3979651305",
+              "leftValue": "={{ $items().length }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        416,
+        0
+      ],
+      "id": "cecdcb59-b164-4f1a-96a9-f77bd5ac7e7e",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "chatId": "7388546974",
+        "text": "=Productos Agotados  Los siguientes productos tienen stock en 0:  {{ $items().map(i => `▪️ ${i.json.producto} (${i.json.codigo})`).join('\\n') }}  Requieren reposición inmediata. 📅 {{ $now.format('dd/MM/yyyy HH:mm') }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        624,
+        -96
+      ],
+      "id": "bb5e605f-8400-4ea4-b58a-7f65732b6bc1",
+      "name": "Send a text message",
+      "webhookId": "245d731b-1937-4306-ae5c-40379bdc0d67",
+      "credentials": {
+        "telegramApi": {
+          "id": "RkPVrYJQCEMJszGV",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        624,
+        96
+      ],
+      "id": "e829f32d-d4fc-4133-80f2-63aa55fe6373",
+      "name": "No Operation, do nothing"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Execute a SQL query",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute a SQL query": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Send a text message",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "No Operation, do nothing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
+    "errorWorkflow": "4EOToqAqaYg788QW",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "versionId": "6f01199c-1558-4cf7-a52e-b2a33663f652",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "a754d5b26c3afea1a6891fc0c770d0c72bb86b3273f13b42c964bbca1908b096"
+  },
+  "id": "q6wU6l1RNblvLJQp",
+  "tags": []
+}

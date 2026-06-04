@@ -1,0 +1,97 @@
+{
+  "name": "INV-08 Consultar Proveedores",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "consultar-proveedores",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "e70f618c-fb2c-4ef8-a042-f9a266313b0e",
+      "name": "Webhook",
+      "webhookId": "fbb0a1e6-ea28-4939-a0c7-f152e5f929ec"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SET search_path TO inventario;\n\nSELECT id, nombre, contacto, telefono, email\nFROM proveedores\nWHERE activo = TRUE\nORDER BY nombre;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        208,
+        0
+      ],
+      "id": "101a134a-0be7-42bb-af1f-81e686df95d4",
+      "name": "Execute a SQL query",
+      "credentials": {
+        "postgres": {
+          "id": "9VBZqOBt6WDgRTdn",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "allIncomingItems",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        416,
+        0
+      ],
+      "id": "aabec375-09ad-4eb6-947f-35a252a0f277",
+      "name": "Respond to Webhook"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Execute a SQL query",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute a SQL query": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
+    "errorWorkflow": "4EOToqAqaYg788QW",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "versionId": "ff0b9b50-d374-49b9-a0b7-21182f424fd7",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "a754d5b26c3afea1a6891fc0c770d0c72bb86b3273f13b42c964bbca1908b096"
+  },
+  "id": "FBH7u8OnSmeetksx",
+  "tags": []
+}

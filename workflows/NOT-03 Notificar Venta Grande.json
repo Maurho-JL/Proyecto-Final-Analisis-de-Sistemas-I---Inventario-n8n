@@ -1,0 +1,216 @@
+{
+  "name": "NOT-03 Notificar Venta Grande",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "notificar-venta-grande",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "843319ca-8910-4818-b906-0aaca575f9bd",
+      "name": "Webhook",
+      "webhookId": "c17643da-5cf3-4e2b-a7a0-2c6a53cfd011"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SET search_path TO inventario;\n\nSELECT \n    v.id            AS venta_id,\n    cl.nombre       AS cliente,\n    v.total,\n    v.fecha::DATE   AS fecha\nFROM ventas v\nJOIN clientes cl ON cl.id = v.cliente_id\nWHERE v.id = {{ $json.body.venta_id }}\nAND v.total >= 5000;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        208,
+        0
+      ],
+      "id": "a5478e17-d9f2-4e3b-8fa5-f7f10a8d4d4c",
+      "name": "Execute a SQL query",
+      "credentials": {
+        "postgres": {
+          "id": "9VBZqOBt6WDgRTdn",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "0bb8e176-4ffb-42d2-abac-7a5a7a227d5e",
+              "leftValue": "={{ $items().length }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        416,
+        0
+      ],
+      "id": "07e6740f-b8d3-4343-beab-4a7f0ce78927",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "chatId": "7388546974",
+        "text": "= *Venta importante registrada*  Cliente: {{ $json.cliente }} Venta ID: \\#{{ $json.venta_id }} Total: Q{{ $json.total }} Fecha: {{ $json.fecha }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        624,
+        -96
+      ],
+      "id": "8b9da5da-7f7b-44a5-8783-dd79a708ee49",
+      "name": "Send a text message",
+      "webhookId": "a0d8d2fd-632c-480e-8b1d-647bc6412775",
+      "credentials": {
+        "telegramApi": {
+          "id": "RkPVrYJQCEMJszGV",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        624,
+        96
+      ],
+      "id": "a0408184-b608-4c2a-9769-7c179e0dd086",
+      "name": "No Operation, do nothing"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        832,
+        -96
+      ],
+      "id": "4e7b3b23-1a21-48bc-bf49-664119dbd903",
+      "name": "Respond to Webhook"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        832,
+        96
+      ],
+      "id": "6cce1a4b-e3c9-486b-b262-622cd3265e48",
+      "name": "Respond to Webhook1"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Execute a SQL query",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute a SQL query": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Send a text message",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "No Operation, do nothing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send a text message": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "No Operation, do nothing": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
+    "errorWorkflow": "4EOToqAqaYg788QW",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "versionId": "de8db8f7-1a26-4983-a412-e25a665fac11",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "a754d5b26c3afea1a6891fc0c770d0c72bb86b3273f13b42c964bbca1908b096"
+  },
+  "id": "rCGuBTvqx3CqO1eq",
+  "tags": []
+}

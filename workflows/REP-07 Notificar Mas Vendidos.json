@@ -1,0 +1,188 @@
+{
+  "name": "REP-07 Notificar Mas Vendidos",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "notificar-mas-vendidos",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "3a5a6e0c-3551-4e27-80c1-898193223d9d",
+      "name": "Webhook",
+      "webhookId": "345a1da6-6e1f-4dbb-9337-db7fea96df0e"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SET search_path TO inventario;\n\nSELECT \n    p.codigo,\n    p.nombre                                        AS producto,\n    c.nombre                                        AS categoria,\n    SUM(dv.cantidad)                                AS unidades_vendidas,\n    SUM(dv.cantidad * dv.precio_unitario)           AS ingresos_generados\nFROM detalle_venta dv\nJOIN productos p  ON p.id = dv.producto_id\nJOIN categorias c ON c.id = p.categoria_id\nJOIN ventas v     ON v.id = dv.venta_id\nWHERE DATE_TRUNC('month', v.fecha) = DATE_TRUNC('month', CURRENT_DATE)\nGROUP BY p.id, p.codigo, p.nombre, c.nombre\nORDER BY unidades_vendidas DESC\nLIMIT 10;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        208,
+        0
+      ],
+      "id": "8e82f601-83de-43ab-8c6f-ac8842b33090",
+      "name": "Execute a SQL query",
+      "credentials": {
+        "postgres": {
+          "id": "9VBZqOBt6WDgRTdn",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\n\nconst filasHTML = items.map((i, idx) => `\n    <tr>\n        <td>${idx + 1}</td>\n        <td>${i.json.codigo}</td>\n        <td>${i.json.producto}</td>\n        <td>${i.json.categoria}</td>\n        <td>${i.json.unidades_vendidas}</td>\n        <td>Q${parseFloat(i.json.ingresos_generados).toFixed(2)}</td>\n    </tr>\n`).join('');\n\nconst telegramMsg = ` Top 10 productos más vendidos del mes\n\n${items.map((i, idx) =>\n    `${idx+1}. ${i.json.producto}\\n   ${i.json.unidades_vendidas} uds | Q${parseFloat(i.json.ingresos_generados).toFixed(2)}`\n).join('\\n')}`;\n\nreturn [{\n    json: {\n        filas_html: filasHTML,\n        telegram: telegramMsg\n    }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        416,
+        0
+      ],
+      "id": "c3906ac8-f046-41fc-9664-10126d318974",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "chatId": "=7388546974",
+        "text": "={{ $json.telegram }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        624,
+        0
+      ],
+      "id": "23b7a38b-03aa-4caa-8a94-c3e1374ee2a1",
+      "name": "Send a text message",
+      "webhookId": "f588f642-9b82-4540-a7db-c16640412abe",
+      "credentials": {
+        "telegramApi": {
+          "id": "RkPVrYJQCEMJszGV",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fromEmail": "mjomlem.21@gmail.com",
+        "toEmail": "mjomlem.21@gmail.com",
+        "subject": "=Top productos más vendidos — {{ $now.format('MM/yyyy') }}",
+        "html": "=<h2> Productos más vendidos del mes</h2>\n<table border=\"1\" cellpadding=\"8\" style=\"border-collapse:collapse;width:100%\">\n  <tr style=\"background:#e1f5ee\">\n    <th>#</th><th>Código</th><th>Producto</th><th>Categoría</th><th>Unidades</th><th>Ingresos</th>\n  </tr>\n  {{ $('Code in JavaScript').first().json.filas_html }}\n</table>",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        832,
+        0
+      ],
+      "id": "af6c1abd-ab8c-43cf-add9-7cf8655cd694",
+      "name": "Send an Email",
+      "webhookId": "469c5b23-0b4b-44e5-ab28-b05c9e8b0ce4",
+      "credentials": {
+        "smtp": {
+          "id": "9HwKAKjIDJqeSz1u",
+          "name": "Gmail SMTP"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        1040,
+        0
+      ],
+      "id": "755d2b90-1ffd-4057-a32b-38048cf53df8",
+      "name": "Respond to Webhook"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Execute a SQL query",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute a SQL query": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Send a text message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send a text message": {
+      "main": [
+        [
+          {
+            "node": "Send an Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send an Email": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
+    "errorWorkflow": "4EOToqAqaYg788QW",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "versionId": "28a217e3-709e-4a68-834e-a528cdc06a5f",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "a754d5b26c3afea1a6891fc0c770d0c72bb86b3273f13b42c964bbca1908b096"
+  },
+  "id": "hvjJzTcwSkBHh4T5",
+  "tags": []
+}

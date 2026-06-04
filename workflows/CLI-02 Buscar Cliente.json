@@ -1,0 +1,97 @@
+{
+  "name": "CLI-02 Buscar Cliente",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "buscar-cliente",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "78ff5f5f-99cc-4b6e-9ff1-5b2f2204e661",
+      "name": "Webhook",
+      "webhookId": "ae318ccf-ab87-46ac-a88d-8039c496593f"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SET search_path TO inventario;\n\nSELECT \n    c.id,\n    c.nombre,\n    c.creado_en::DATE           AS cliente_desde,\n    COUNT(v.id)                 AS total_compras,\n    COALESCE(SUM(v.total), 0)  AS total_gastado\nFROM clientes c\nLEFT JOIN ventas v ON v.cliente_id = c.id\nWHERE \n    c.id::TEXT = '{{ $json.query.buscar }}'\n    OR c.nombre ILIKE '%{{ $json.query.buscar }}%'\nGROUP BY c.id, c.nombre, c.creado_en\nORDER BY c.nombre;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        208,
+        0
+      ],
+      "id": "4aa211b2-52af-402f-9e52-e5a7dc895c4c",
+      "name": "Execute a SQL query",
+      "credentials": {
+        "postgres": {
+          "id": "9VBZqOBt6WDgRTdn",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "allIncomingItems",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        416,
+        0
+      ],
+      "id": "25d6d07b-efd8-4f36-8600-e381af2ffc59",
+      "name": "Respond to Webhook"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Execute a SQL query",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute a SQL query": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
+    "errorWorkflow": "4EOToqAqaYg788QW",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "versionId": "e5449092-6550-4312-8e20-c32bc987e435",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "a754d5b26c3afea1a6891fc0c770d0c72bb86b3273f13b42c964bbca1908b096"
+  },
+  "id": "qw5Ob0YpkHTvuq8R",
+  "tags": []
+}

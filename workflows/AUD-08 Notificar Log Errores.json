@@ -1,0 +1,164 @@
+{
+  "name": "AUD-12 Notificar Log Errores",
+  "nodes": [
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\n\nconst pendientes = items.filter(i => i.json.estado === 'pendiente').length;\nconst resueltas = items.filter(i => i.json.estado === 'resuelta').length;\n\nconst filasHTML = items.map(i => `\n    <tr>\n        <td>${i.json.id}</td>\n        <td>${i.json.codigo}</td>\n        <td>${i.json.producto}</td>\n        <td>${i.json.tipo_alerta}</td>\n        <td>${i.json.mensaje}</td>\n        <td>${i.json.estado}</td>\n        <td>${i.json.fecha}</td>\n    </tr>\n`).join('');\n\nconst telegramMsg = ` Log de errores del sistema\n${new Date().toLocaleDateString('es-GT')}\n\nTotal alertas: ${items.length}\nPendientes: ${pendientes}\nResueltas: ${resueltas}\n\nAlertas pendientes:\n${items.filter(i => i.json.estado === 'pendiente').slice(0,5).map(i =>\n    ` ${i.json.producto}\\n   ${i.json.mensaje} | ${i.json.fecha}`\n).join('\\n')}`;\n\nreturn [{\n    json: {\n        total: items.length,\n        pendientes,\n        resueltas,\n        filas_html: filasHTML,\n        telegram: telegramMsg\n    }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        80,
+        0
+      ],
+      "id": "36bebe77-fc76-4648-980e-fe4a2f3388ea",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "chatId": "7388546974",
+        "text": "={{ $json.telegram }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        288,
+        0
+      ],
+      "id": "23a61245-ce0b-4c22-9d46-0e98f28e74ef",
+      "name": "Send a text message",
+      "webhookId": "bdd58c12-b6de-4c54-8e7a-f12c89a9a5e3",
+      "credentials": {
+        "telegramApi": {
+          "id": "RkPVrYJQCEMJszGV",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fromEmail": "mjomlem.21@gmail.com",
+        "toEmail": "mjomlem.21@gmail.com",
+        "subject": "=Log de errores — {{ $now.format('dd/MM/yyyy') }}",
+        "html": "=<h2> Log de errores del sistema</h2>\n<table border=\"1\" cellpadding=\"8\" style=\"border-collapse:collapse;width:50%\">\n  <tr style=\"background:#ffecec\"><th>Métrica</th><th>Valor</th></tr>\n  <tr><td>Total alertas</td><td>{{ $('Code in JavaScript').first().json.total }}</td></tr>\n  <tr><td>Pendientes</td><td><b style=\"color:red\">{{ $('Code in JavaScript').first().json.pendientes }}</b></td></tr>\n  <tr><td>Resueltas</td><td>{{ $('Code in JavaScript').first().json.resueltas }}</td></tr>\n</table>\n<br>\n<table border=\"1\" cellpadding=\"8\" style=\"border-collapse:collapse;width:100%\">\n  <tr style=\"background:#ffecec\">\n    <th>ID</th><th>Código</th><th>Producto</th><th>Tipo</th><th>Mensaje</th><th>Estado</th><th>Fecha</th>\n  </tr>\n  {{ $('Code in JavaScript').first().json.filas_html }}\n</table>",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        496,
+        0
+      ],
+      "id": "9f0a186e-06ef-4ced-9178-2ea9cb55b296",
+      "name": "Send an Email",
+      "webhookId": "89ce3a7d-dc69-4606-a42e-6802ecb872fd",
+      "credentials": {
+        "smtp": {
+          "id": "9HwKAKjIDJqeSz1u",
+          "name": "Gmail SMTP"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "path": "notificar-log-errores",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -256,
+        0
+      ],
+      "id": "bd9b035e-9811-4510-9ecd-e7f326eb8dad",
+      "name": "Webhook",
+      "webhookId": "f7e77e35-d7fc-48a0-97a8-f15e897d8d67"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SET search_path TO inventario;\n\nSELECT \n    a.id,\n    p.codigo,\n    p.nombre        AS producto,\n    a.tipo_alerta,\n    a.mensaje,\n    a.estado,\n    a.fecha::DATE   AS fecha\nFROM alertas a\nJOIN productos p ON p.id = a.producto_id\nORDER BY a.fecha DESC\nLIMIT 50;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        -112,
+        0
+      ],
+      "id": "2373f90c-c1d8-400b-8f6d-2e431503e7ff",
+      "name": "Execute a SQL query",
+      "credentials": {
+        "postgres": {
+          "id": "9VBZqOBt6WDgRTdn",
+          "name": "Postgres account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Send a text message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send a text message": {
+      "main": [
+        [
+          {
+            "node": "Send an Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Execute a SQL query",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute a SQL query": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
+    "errorWorkflow": "4EOToqAqaYg788QW",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "versionId": "ce818094-98f2-4ee1-8ea9-54d4cd67a61e",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "a754d5b26c3afea1a6891fc0c770d0c72bb86b3273f13b42c964bbca1908b096"
+  },
+  "id": "AYLK43nxdl52zC8A",
+  "tags": []
+}

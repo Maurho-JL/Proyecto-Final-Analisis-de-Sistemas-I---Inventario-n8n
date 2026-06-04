@@ -1,0 +1,132 @@
+{
+  "name": "CLI-05 Enviar Estado Pedido",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "enviar-estado-pedido",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "01dba178-c565-4e85-83d5-b68c1f6b5c93",
+      "name": "Webhook",
+      "webhookId": "1c51ec9e-b709-43d8-b1ca-00cd3a301a8a"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SET search_path TO inventario;\n\nSELECT \n    c.nombre        AS cliente,\n    v.id            AS venta_id,\n    v.fecha::DATE   AS fecha,\n    v.total,\n    json_agg(json_build_object(\n        'producto', p.nombre,\n        'cantidad', dv.cantidad,\n        'precio',   dv.precio_unitario,\n        'subtotal', dv.cantidad * dv.precio_unitario\n    )) AS detalle\nFROM ventas v\nJOIN clientes cl      ON cl.id = v.cliente_id\nJOIN detalle_venta dv ON dv.venta_id = v.id\nJOIN productos p      ON p.id = dv.producto_id\nJOIN clientes c       ON c.id = v.cliente_id\nWHERE v.id = {{ $json.body.venta_id }}\nGROUP BY c.nombre, v.id, v.fecha, v.total;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        208,
+        0
+      ],
+      "id": "f4a914e1-a416-4d8c-b26e-49de92dcca27",
+      "name": "Execute a SQL query",
+      "credentials": {
+        "postgres": {
+          "id": "9VBZqOBt6WDgRTdn",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fromEmail": "mjomlem.21@gmail.com",
+        "toEmail": "={{ $('Webhook').first().json.body.email_cliente }}",
+        "subject": "=Detalle de su compra #{{ $json.venta_id }}",
+        "html": "=<h2>Gracias por su compra</h2>\n<p>Estimado/a <b>{{ $json.cliente }}</b>,</p>\n<p>Le confirmamos su compra del <b>{{ $json.fecha }}</b>:</p>\n<table border=\"1\" cellpadding=\"8\" style=\"border-collapse:collapse;width:100%\">\n  <tr style=\"background:#f0f0f0\">\n    <th>Producto</th>\n    <th>Cantidad</th>\n    <th>Precio</th>\n    <th>Subtotal</th>\n  </tr>\n  {{ $json.detalle.map(d => `\n  <tr>\n    <td>${d.producto}</td>\n    <td>${d.cantidad}</td>\n    <td>Q${d.precio}</td>\n    <td>Q${d.subtotal}</td>\n  </tr>`).join('') }}\n</table>\n<p><b>Total: Q{{ $json.total }}</b></p>\n<p>Gracias por preferirnos.</p>",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        416,
+        0
+      ],
+      "id": "5e7bd15e-5638-4d4e-9cde-312f0daba3cf",
+      "name": "Send an Email",
+      "webhookId": "bfd62050-6bec-47ba-ae83-af56e185dd8e",
+      "credentials": {
+        "smtp": {
+          "id": "9HwKAKjIDJqeSz1u",
+          "name": "Gmail SMTP"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        624,
+        0
+      ],
+      "id": "21822e8d-ae82-4824-8dda-d58e29253451",
+      "name": "Respond to Webhook"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Execute a SQL query",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute a SQL query": {
+      "main": [
+        [
+          {
+            "node": "Send an Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send an Email": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
+    "errorWorkflow": "4EOToqAqaYg788QW",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "versionId": "27ab0397-eb57-4595-9665-1738f1fa43a3",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "a754d5b26c3afea1a6891fc0c770d0c72bb86b3273f13b42c964bbca1908b096"
+  },
+  "id": "iofuoQha0qHmikKi",
+  "tags": []
+}

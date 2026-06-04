@@ -1,0 +1,188 @@
+{
+  "name": "REP-06 Notificar Resumen Diario",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "notificar-resumen-diario",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "496ddd27-e403-4936-af50-72700fe255cc",
+      "name": "Webhook",
+      "webhookId": "822b00cd-01c4-4276-a92b-3a23552fc43d"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SET search_path TO inventario;\n\nSELECT \n    'detalle'                               AS tipo,\n    v.id::TEXT                              AS venta_id,\n    cl.nombre                               AS cliente,\n    p.nombre                                AS producto,\n    p.codigo,\n    dv.cantidad,\n    dv.precio_unitario,\n    dv.cantidad * dv.precio_unitario        AS subtotal,\n    v.total,\n    v.fecha::DATE                           AS fecha\nFROM ventas v\nJOIN clientes cl      ON cl.id = v.cliente_id\nJOIN detalle_venta dv ON dv.venta_id = v.id\nJOIN productos p      ON p.id = dv.producto_id\nWHERE v.fecha::DATE = CURRENT_DATE\n\nUNION ALL\n\nSELECT \n    'resumen'                               AS tipo,\n    COUNT(DISTINCT v.id)::TEXT              AS venta_id,\n    SUM(dv.cantidad)::TEXT                  AS cliente,\n    COALESCE(SUM(v.total),0)::TEXT         AS producto,\n    COUNT(dv.id)::TEXT                      AS codigo,\n    0                                       AS cantidad,\n    ROUND(AVG(v.total),2)                  AS precio_unitario,\n    COALESCE(SUM(v.total),0)               AS subtotal,\n    COALESCE(SUM(v.total),0)               AS total,\n    CURRENT_DATE                            AS fecha\nFROM ventas v\nJOIN detalle_venta dv ON dv.venta_id = v.id\nWHERE v.fecha::DATE = CURRENT_DATE;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        208,
+        0
+      ],
+      "id": "d818510e-85f6-46cf-935e-39956b23aae4",
+      "name": "Execute a SQL query",
+      "credentials": {
+        "postgres": {
+          "id": "9VBZqOBt6WDgRTdn",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\n\n// Separar detalle y resumen\nconst detalle = items.filter(i => i.json.tipo === 'detalle');\nconst resumen = items.find(i => i.json.tipo === 'resumen');\n\nconst filasHTML = detalle.map(d => `\n    <tr>\n        <td>#${d.json.venta_id}</td>\n        <td>${d.json.cliente}</td>\n        <td>${d.json.codigo}</td>\n        <td>${d.json.producto}</td>\n        <td>${d.json.cantidad}</td>\n        <td>Q${parseFloat(d.json.precio_unitario).toFixed(2)}</td>\n        <td>Q${parseFloat(d.json.subtotal).toFixed(2)}</td>\n    </tr>\n`).join('');\n\nconst telegramMsg = ` Resumen diario de ventas\n${resumen ? resumen.json.fecha : ''}\n\nDetalle:\n${detalle.map(d =>\n    `▪️ #${d.json.venta_id} | ${d.json.cliente}\\n   ${d.json.producto} (x${d.json.cantidad}) | Q${parseFloat(d.json.subtotal).toFixed(2)}`\n).join('\\n')}\n\nResumen:\nTotal ventas: ${resumen ? resumen.json.venta_id : 0}\nTotal unidades: ${resumen ? resumen.json.cliente : 0}\nIngresos: Q${resumen ? parseFloat(resumen.json.subtotal).toFixed(2) : '0.00'}\nTicket promedio: Q${resumen ? parseFloat(resumen.json.precio_unitario).toFixed(2) : '0.00'}`;\n\nreturn [{\n    json: {\n        filas_html: filasHTML,\n        resumen: resumen ? resumen.json : {},\n        telegram: telegramMsg\n    }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        416,
+        0
+      ],
+      "id": "5a8ae8d0-9808-4df4-89cf-53733f7fcc0b",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "chatId": "7388546974",
+        "text": "={{ $json.telegram }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        624,
+        0
+      ],
+      "id": "3cd2d3f3-d510-49af-a3de-2f13041415d6",
+      "name": "Send a text message",
+      "webhookId": "134a9bd7-4310-40e8-9815-d5ecbd79205a",
+      "credentials": {
+        "telegramApi": {
+          "id": "RkPVrYJQCEMJszGV",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fromEmail": "mjomlem.21@gmail.com",
+        "toEmail": "mjomlem.21@gmail.com",
+        "subject": "Resumen diario — {{ $('Code in JavaScript').first().json.fecha }",
+        "html": "=<h2> Resumen diario de ventas</h2>\n<h3>Detalle de ventas</h3>\n<table border=\"1\" cellpadding=\"8\" style=\"border-collapse:collapse;width:100%\">\n  <tr style=\"background:#e1f5ee\">\n    <th>Venta ID</th><th>Cliente</th><th>Código</th><th>Producto</th><th>Cantidad</th><th>Precio unit.</th><th>Subtotal</th>\n  </tr>\n  {{ $('Code in JavaScript').first().json.filas_html }}\n</table>\n<br>\n<h3>Resumen general</h3>\n<table border=\"1\" cellpadding=\"8\" style=\"border-collapse:collapse;width:50%\">\n  <tr style=\"background:#e1f5ee\"><th>Métrica</th><th>Valor</th></tr>\n  <tr><td>Fecha</td><td>{{ $('Code in JavaScript').first().json.resumen.fecha }}</td></tr>\n  <tr><td>Total ventas</td><td>{{ $('Code in JavaScript').first().json.resumen.venta_id }}</td></tr>\n  <tr><td>Total unidades</td><td>{{ $('Code in JavaScript').first().json.resumen.cliente }}</td></tr>\n  <tr><td>Ingresos totales</td><td><b>Q{{ $('Code in JavaScript').first().json.resumen.subtotal }}</b></td></tr>\n  <tr><td>Ticket promedio</td><td>Q{{ $('Code in JavaScript').first().json.resumen.precio_unitario }}</td></tr>\n</table>",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        832,
+        0
+      ],
+      "id": "42eadf75-e95f-4c72-8a2c-9058a71137c2",
+      "name": "Send an Email",
+      "webhookId": "53c2fcc4-125d-42ca-9c20-5840695c7eb2",
+      "credentials": {
+        "smtp": {
+          "id": "9HwKAKjIDJqeSz1u",
+          "name": "Gmail SMTP"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        1040,
+        0
+      ],
+      "id": "50d3f32b-049b-455b-8492-3ab9fefb17e9",
+      "name": "Respond to Webhook"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Execute a SQL query",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute a SQL query": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Send a text message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send a text message": {
+      "main": [
+        [
+          {
+            "node": "Send an Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send an Email": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
+    "errorWorkflow": "4EOToqAqaYg788QW",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "versionId": "70645d49-6d6c-4b91-ab04-fcacca5a803a",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "a754d5b26c3afea1a6891fc0c770d0c72bb86b3273f13b42c964bbca1908b096"
+  },
+  "id": "BkV9yENIFLmyqpqq",
+  "tags": []
+}

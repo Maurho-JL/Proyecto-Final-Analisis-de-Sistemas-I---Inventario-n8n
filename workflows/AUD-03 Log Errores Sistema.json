@@ -1,0 +1,97 @@
+{
+  "name": "AUD-03 Log Errores Sistema",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "log-errores",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "da523f40-ff63-4686-80d4-30452557ad78",
+      "name": "Webhook",
+      "webhookId": "5503360c-b7c5-4cd8-a04f-48fd88fa3026"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SET search_path TO inventario;\n\nSELECT \n    a.id,\n    p.codigo,\n    p.nombre        AS producto,\n    a.tipo_alerta,\n    a.mensaje,\n    a.estado,\n    a.fecha::DATE   AS fecha\nFROM alertas a\nJOIN productos p ON p.id = a.producto_id\nORDER BY a.fecha DESC\nLIMIT 50;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        208,
+        0
+      ],
+      "id": "4ae6afcd-c80b-4b44-8e3b-b1b5846ef838",
+      "name": "Execute a SQL query",
+      "credentials": {
+        "postgres": {
+          "id": "9VBZqOBt6WDgRTdn",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "allIncomingItems",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        416,
+        0
+      ],
+      "id": "3bf9c188-10b5-45f4-a365-72b4b0c94785",
+      "name": "Respond to Webhook1"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Execute a SQL query",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute a SQL query": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
+    "errorWorkflow": "4EOToqAqaYg788QW",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "versionId": "50fc2294-5185-422d-99db-7aace089b2b6",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "a754d5b26c3afea1a6891fc0c770d0c72bb86b3273f13b42c964bbca1908b096"
+  },
+  "id": "tlGVDgQ9vVBsDFT9",
+  "tags": []
+}

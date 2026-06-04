@@ -1,0 +1,190 @@
+{
+  "name": "INV-06 Registrar Producto",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "registrar-producto",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "cc9a7d44-7c77-4933-8498-80a9bda07afe",
+      "name": "Webhook",
+      "webhookId": "112798c0-734c-4fd0-b214-3d8f4b5bde98"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SET search_path TO inventario;\n\nINSERT INTO productos (nombre, categoria_id, codigo, precio_venta, stock_actual, stock_minimo, stock_maximo)\nVALUES (\n    '{{ $json.body.nombre }}',\n    {{ $json.body.categoria_id }},\n    '{{ $json.body.codigo }}',\n    {{ $json.body.precio_venta }},\n    {{ $json.body.stock_actual }},\n    {{ $json.body.stock_minimo }},\n    {{ $json.body.stock_maximo }}\n)\nRETURNING \n    id,\n    nombre,\n    codigo,\n    precio_venta,\n    stock_actual;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        208,
+        0
+      ],
+      "id": "f3effb41-3818-41d2-a55b-7fc3b75ce64c",
+      "name": "Execute a SQL query",
+      "credentials": {
+        "postgres": {
+          "id": "9VBZqOBt6WDgRTdn",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "allIncomingItems",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        1024,
+        0
+      ],
+      "id": "08d39f44-d6be-490d-9e2d-c2d0b95d5e33",
+      "name": "Respond to Webhook"
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $input.first().json;\n\nconst telegramMsg = ` Nuevo producto registrado\n\nID: ${item.id}\nCódigo: ${item.codigo}\nNombre: ${item.nombre}\nPrecio: Q${item.precio_venta}\nStock inicial: ${item.stock_actual} unidades`;\n\nreturn [{\n  json: {\n    ...item,\n    telegram: telegramMsg\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        416,
+        0
+      ],
+      "id": "8a40d64f-1bc5-45fd-b679-33c06e153d9a",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "chatId": "7388546974",
+        "text": "={{ $json.telegram }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        624,
+        0
+      ],
+      "id": "d469c606-44ce-477a-980a-603ff5ad4c1a",
+      "name": "Send a text message",
+      "webhookId": "1c136d9a-aa9d-4d61-8a8c-6fd5367b9a32",
+      "credentials": {
+        "telegramApi": {
+          "id": "RkPVrYJQCEMJszGV",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fromEmail": "mjomlem.21@gmail.com",
+        "toEmail": "mjomlem.21@gmail.com",
+        "subject": "=Nuevo producto — {{ $('Code in JavaScript').first().json.codigo }}",
+        "html": "=<h2> Nuevo producto registrado</h2>\n<table border=\"1\" cellpadding=\"8\" style=\"border-collapse:collapse;width:50%\">\n  <tr style=\"background:#e8f5e9\">\n    <th>Campo</th>\n    <th>Valor</th>\n  </tr>\n  <tr><td>ID</td><td>{{ $('Code in JavaScript').first().json.id }}</td></tr>\n  <tr><td>Código</td><td>{{ $('Code in JavaScript').first().json.codigo }}</td></tr>\n  <tr><td>Nombre</td><td>{{ $('Code in JavaScript').first().json.nombre }}</td></tr>\n  <tr><td>Precio</td><td>Q{{ $('Code in JavaScript').first().json.precio_venta }}</td></tr>\n  <tr><td>Stock inicial</td><td>{{ $('Code in JavaScript').first().json.stock_actual }}</td></tr>\n</table>",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        832,
+        0
+      ],
+      "id": "d9bca4d9-454a-4d90-88ae-1f24dbe1cf93",
+      "name": "Send an Email",
+      "webhookId": "26138b51-f3f7-4ccd-b6db-daa7d77cbeed",
+      "credentials": {
+        "smtp": {
+          "id": "9HwKAKjIDJqeSz1u",
+          "name": "Gmail SMTP"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Execute a SQL query",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute a SQL query": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Send a text message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send a text message": {
+      "main": [
+        [
+          {
+            "node": "Send an Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send an Email": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
+    "errorWorkflow": "4EOToqAqaYg788QW",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "versionId": "3e174a3a-9668-4204-ba50-bc55233994d9",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "a754d5b26c3afea1a6891fc0c770d0c72bb86b3273f13b42c964bbca1908b096"
+  },
+  "id": "NeFIhtzOclD1OpwF",
+  "tags": []
+}

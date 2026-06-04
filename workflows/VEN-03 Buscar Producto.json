@@ -1,0 +1,98 @@
+{
+  "name": "VEN-03 Buscar Producto",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "buscar-producto",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "d32792fd-3536-42d3-af07-569a5f3aeca3",
+      "name": "Webhook",
+      "webhookId": "d0079e12-92d1-4389-9f7d-7814a2cba2a5"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SET search_path TO inventario;\n\nSELECT \n    p.id,\n    p.codigo,\n    p.nombre,\n    c.nombre        AS categoria,\n    p.precio_venta,\n    p.stock_actual,\n    CASE \n        WHEN p.stock_actual = 0               THEN 'agotado'\n        WHEN p.stock_actual <= p.stock_minimo THEN 'stock_bajo'\n        ELSE 'disponible'\n    END             AS estado\nFROM productos p\nJOIN categorias c ON c.id = p.categoria_id\nWHERE \n    p.codigo ILIKE '%{{ $json.query.buscar }}%'\n    OR p.nombre ILIKE '%{{ $json.query.buscar }}%'\nORDER BY p.nombre;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        208,
+        0
+      ],
+      "id": "93641ba1-ae6c-4695-97bc-3b74a2b9ec6d",
+      "name": "Execute a SQL query",
+      "credentials": {
+        "postgres": {
+          "id": "9VBZqOBt6WDgRTdn",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        416,
+        0
+      ],
+      "id": "44f2286a-4cf1-44a5-b808-7f4dbfc8ab94",
+      "name": "Respond to Webhook"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Execute a SQL query",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute a SQL query": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
+    "errorWorkflow": "4EOToqAqaYg788QW",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "versionId": "5a2c1478-d2e3-4c27-97d1-23924d1229a3",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "a754d5b26c3afea1a6891fc0c770d0c72bb86b3273f13b42c964bbca1908b096"
+  },
+  "id": "KOnz6unB7bUYgH5J",
+  "tags": []
+}

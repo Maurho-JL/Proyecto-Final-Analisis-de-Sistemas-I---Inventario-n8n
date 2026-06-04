@@ -1,0 +1,189 @@
+{
+  "name": "CLI-01 Registrar Cliente",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "registrar-cliente",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "5d21dd04-2ca6-4b10-acf3-fcab65b617e6",
+      "name": "Webhook",
+      "webhookId": "3ef2f150-c9a3-4b92-b4cb-c423f6ef3499"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SET search_path TO inventario;\n\nINSERT INTO clientes (nombre)\nVALUES ('{{ $json.body.nombre }}')\nRETURNING \n    id,\n    nombre,\n    creado_en;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        208,
+        0
+      ],
+      "id": "cc032fca-2456-42a3-ae75-9786f2c03122",
+      "name": "Execute a SQL query",
+      "credentials": {
+        "postgres": {
+          "id": "9VBZqOBt6WDgRTdn",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $input.first().json;\n\nconst telegramMsg = ` Nuevo cliente registrado\n\nID: ${item.id}\nNombre: ${item.nombre}\nFecha: ${new Date(item.creado_en).toLocaleDateString('es-GT')}`;\n\nreturn [{\n    json: {\n        ...item,\n        telegram: telegramMsg\n    }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        416,
+        0
+      ],
+      "id": "105c7a9c-4b6a-4be6-b1b8-e6a0d690f206",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "chatId": "7388546974",
+        "text": "={{ $json.telegram }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        624,
+        0
+      ],
+      "id": "b9e96d89-8cc2-4ca5-9823-3572d2bc7505",
+      "name": "Send a text message",
+      "webhookId": "4f351165-1686-4a39-b5d6-33c5310eb420",
+      "credentials": {
+        "telegramApi": {
+          "id": "RkPVrYJQCEMJszGV",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fromEmail": "mjomlem.21@gmail.com",
+        "toEmail": "mjomlem.21@gmail.com",
+        "subject": "=Nuevo cliente — {{ $('Code in JavaScript').first().json.nombre }}",
+        "html": "=<h2> Nuevo cliente registrado</h2>\n<table border=\"1\" cellpadding=\"8\" style=\"border-collapse:collapse;width:50%\">\n  <tr style=\"background:#eeedfe\"><th>Campo</th><th>Valor</th></tr>\n  <tr><td>ID</td><td>{{ $('Code in JavaScript').first().json.id }}</td></tr>\n  <tr><td>Nombre</td><td><b>{{ $('Code in JavaScript').first().json.nombre }}</b></td></tr>\n  <tr><td>Fecha</td><td>{{ $('Code in JavaScript').first().json.creado_en }}</td></tr>\n</table>",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        832,
+        0
+      ],
+      "id": "fb7f7112-0628-4c67-8054-77b2452a5f15",
+      "name": "Send an Email",
+      "webhookId": "6e273921-d032-410f-9c6c-d939848394ac",
+      "credentials": {
+        "smtp": {
+          "id": "9HwKAKjIDJqeSz1u",
+          "name": "Gmail SMTP"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        1040,
+        0
+      ],
+      "id": "e490977c-d5ef-4c51-ba94-c9a8c6365943",
+      "name": "Respond to Webhook"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Execute a SQL query",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute a SQL query": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Send a text message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send a text message": {
+      "main": [
+        [
+          {
+            "node": "Send an Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send an Email": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
+    "errorWorkflow": "4EOToqAqaYg788QW",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "versionId": "dffe2332-0aa8-45f6-8b47-4ce2c1d21c14",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "a754d5b26c3afea1a6891fc0c770d0c72bb86b3273f13b42c964bbca1908b096"
+  },
+  "id": "FexihgwnLiHYM4RG",
+  "tags": []
+}

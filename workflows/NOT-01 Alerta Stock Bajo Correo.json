@@ -1,0 +1,173 @@
+{
+  "name": "NOT-01 Alerta Stock Bajo Correo",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        0,
+        0
+      ],
+      "id": "c4e85ef3-fe40-4074-a123-9cb7a97d2aaf",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SET search_path TO inventario;\n\nSELECT \n    p.codigo,\n    p.nombre        AS producto,\n    c.nombre        AS categoria,\n    p.stock_actual,\n    p.stock_minimo\nFROM alertas a\nJOIN productos p ON p.id = a.producto_id\nJOIN categorias c ON c.id = p.categoria_id\nWHERE a.estado = 'pendiente'\nORDER BY p.stock_actual ASC;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        208,
+        0
+      ],
+      "id": "7b3fda39-e3d7-4353-be1a-cafaaf7f099f",
+      "name": "Execute a SQL query",
+      "credentials": {
+        "postgres": {
+          "id": "9VBZqOBt6WDgRTdn",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "2eaa4326-f71a-44e5-94c4-f8b127cfe75f",
+              "leftValue": "={{ Number($items().length) }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        416,
+        0
+      ],
+      "id": "5cb547f2-5b06-4eba-ad24-9b4232a517f7",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "fromEmail": "mjomlem.21@gmail.com",
+        "toEmail": "mjomlem.21@gmail.com",
+        "subject": "=Alerta de stock bajo — {{ $now.format('dd/MM/yyyy') }}",
+        "html": "=<h2> Productos con stock bajo</h2>\n<p>Los siguientes productos requieren reposición:</p>\n<table border=\"1\" cellpadding=\"8\" style=\"border-collapse:collapse;width:100%\">\n  <tr style=\"background:#ffecec\">\n    <th>Código</th>\n    <th>Producto</th>\n    <th>Categoría</th>\n    <th>Stock actual</th>\n    <th>Stock mínimo</th>\n  </tr>\n  {{ $items().map(i => `\n  <tr>\n    <td>${i.json.codigo}</td>\n    <td>${i.json.producto}</td>\n    <td>${i.json.categoria}</td>\n    <td style=\"color:red\"><b>${i.json.stock_actual}</b></td>\n    <td>${i.json.stock_minimo}</td>\n  </tr>`).join('') }}\n</table>",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        624,
+        -96
+      ],
+      "id": "a123493a-45d6-493f-8cfb-2f86448f9b72",
+      "name": "Send an Email",
+      "webhookId": "5ba2a02e-ef9e-4165-9d9e-ae6c30e87524",
+      "credentials": {
+        "smtp": {
+          "id": "9HwKAKjIDJqeSz1u",
+          "name": "Gmail SMTP"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        624,
+        96
+      ],
+      "id": "32038742-da3b-4bd0-82d2-2bd2968db527",
+      "name": "No Operation, do nothing"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Execute a SQL query",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute a SQL query": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Send an Email",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "No Operation, do nothing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
+    "errorWorkflow": "4EOToqAqaYg788QW",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "versionId": "055210f3-f258-45b1-bb42-61c587da8580",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "a754d5b26c3afea1a6891fc0c770d0c72bb86b3273f13b42c964bbca1908b096"
+  },
+  "id": "ZWx29Ca50Kbw5FOF",
+  "tags": []
+}

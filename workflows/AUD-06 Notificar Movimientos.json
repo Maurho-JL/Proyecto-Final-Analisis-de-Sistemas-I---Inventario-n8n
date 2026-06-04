@@ -1,0 +1,188 @@
+{
+  "name": "AUD-10 Notificar Movimientos",
+  "nodes": [
+    {
+      "parameters": {
+        "fromEmail": "mjomlem.21@gmail.com",
+        "toEmail": "mjomlem.21@gmail.com",
+        "subject": "=Registro de movimientos — {{ $now.format('dd/MM/yyyy') }}",
+        "html": "=<h2> Registro de movimientos</h2>\n<table border=\"1\" cellpadding=\"8\" style=\"border-collapse:collapse;width:50%\">\n  <tr style=\"background:#eaf3de\"><th>Métrica</th><th>Valor</th></tr>\n  <tr><td>Total movimientos</td><td>{{ $('Code in JavaScript').first().json.total }}</td></tr>\n  <tr><td>Entradas</td><td>{{ $('Code in JavaScript').first().json.entradas }}</td></tr>\n  <tr><td>Salidas</td><td>{{ $('Code in JavaScript').first().json.salidas }}</td></tr>\n  <tr><td>Ventas</td><td>{{ $('Code in JavaScript').first().json.ventas }}</td></tr>\n</table>\n<br>\n<table border=\"1\" cellpadding=\"8\" style=\"border-collapse:collapse;width:100%\">\n  <tr style=\"background:#eaf3de\">\n    <th>Tipo</th><th>Código</th><th>Producto</th><th>Cantidad</th><th>Proveedor/Cliente</th><th>Motivo</th><th>Fecha</th>\n  </tr>\n  {{ $('Code in JavaScript').first().json.filas_html }}\n</table>",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        512,
+        -16
+      ],
+      "id": "54e076b3-293d-4ddd-b3a2-ff9eab5b2e87",
+      "name": "Send an Email",
+      "webhookId": "c5afd62b-b996-4d14-b56b-cc45962cad2a",
+      "credentials": {
+        "smtp": {
+          "id": "9HwKAKjIDJqeSz1u",
+          "name": "Gmail SMTP"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "7388546974",
+        "text": "={{ $json.telegram }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        320,
+        -16
+      ],
+      "id": "2cce7706-5575-43db-a854-379e773a2fc1",
+      "name": "Send a text message",
+      "webhookId": "471f7d7b-5d89-4c45-ac9a-055c3558fa19",
+      "credentials": {
+        "telegramApi": {
+          "id": "RkPVrYJQCEMJszGV",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\n\nconst entradas = items.filter(i => i.json.tipo === 'entrada').length;\nconst salidas = items.filter(i => i.json.tipo === 'salida').length;\nconst ventas = items.filter(i => i.json.tipo === 'venta').length;\n\nconst filasHTML = items.map(i => `\n    <tr>\n        <td>${i.json.tipo}</td>\n        <td>${i.json.codigo}</td>\n        <td>${i.json.producto}</td>\n        <td>${i.json.cantidad}</td>\n        <td>${i.json.proveedor || i.json.notas || '—'}</td>\n        <td>${i.json.motivo || '—'}</td>\n        <td>${i.json.fecha ? i.json.fecha.split('T')[0] : '—'}</td>\n    </tr>\n`).join('');\n\nconst telegramMsg = ` Registro de movimientos\n${new Date().toLocaleDateString('es-GT')}\n\nTotal movimientos: ${items.length}\nEntradas: ${entradas}\nSalidas: ${salidas}\nVentas: ${ventas}\n\nÚltimos 5:\n${items.slice(0,5).map(i =>\n    ` ${i.json.tipo.toUpperCase()} - ${i.json.producto} (${i.json.cantidad} uds)`\n).join('\\n')}\n\nVer reporte completo en su correo.`;\n\nreturn [{\n    json: {\n        total: items.length,\n        entradas,\n        salidas,\n        ventas,\n        filas_html: filasHTML,\n        telegram: telegramMsg\n    }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        96,
+        -16
+      ],
+      "id": "0f33b5fd-b653-437b-aff5-1f7ae849d7e1",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "path": "notificar-movimientos",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -256,
+        -16
+      ],
+      "id": "70fc212f-3a92-4b2f-bdbb-c4fda0099a87",
+      "name": "Webhook",
+      "webhookId": "ef44d744-aa06-480e-8e1a-ea9f1611abbd"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SET search_path TO inventario;\n\nSELECT \n    'entrada'           AS tipo,\n    e.id                AS movimiento_id,\n    p.codigo,\n    p.nombre            AS producto,\n    e.cantidad,\n    pr.nombre           AS proveedor,\n    NULL                AS motivo,\n    e.notas,\n    e.fecha\nFROM entradas e\nJOIN productos p  ON p.id = e.producto_id\nLEFT JOIN proveedores pr ON pr.id = e.proveedor_id\n\nUNION ALL\n\nSELECT \n    'salida'            AS tipo,\n    s.id,\n    p.codigo,\n    p.nombre,\n    s.cantidad,\n    NULL,\n    s.motivo,\n    s.notas,\n    s.fecha\nFROM salidas s\nJOIN productos p ON p.id = s.producto_id\n\nUNION ALL\n\nSELECT \n    'venta'             AS tipo,\n    dv.id,\n    p.codigo,\n    p.nombre,\n    dv.cantidad,\n    NULL,\n    NULL,\n    cl.nombre,\n    v.fecha\nFROM detalle_venta dv\nJOIN productos p  ON p.id = dv.producto_id\nJOIN ventas v     ON v.id = dv.venta_id\nJOIN clientes cl  ON cl.id = v.cliente_id\n\nORDER BY fecha DESC\nLIMIT 50;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        -80,
+        -16
+      ],
+      "id": "c60e2b4b-5c11-4caf-b9d9-5de65c65b8f3",
+      "name": "Execute a SQL query",
+      "credentials": {
+        "postgres": {
+          "id": "9VBZqOBt6WDgRTdn",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        720,
+        -16
+      ],
+      "id": "7e9bc7e5-f85c-45d4-b154-8e509fca4a0a",
+      "name": "Respond to Webhook"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Send a text message": {
+      "main": [
+        [
+          {
+            "node": "Send an Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Send a text message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Execute a SQL query",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute a SQL query": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send an Email": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
+    "errorWorkflow": "4EOToqAqaYg788QW",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "versionId": "d27ae814-b797-424a-9cbb-bd5ed5f1ffc9",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "a754d5b26c3afea1a6891fc0c770d0c72bb86b3273f13b42c964bbca1908b096"
+  },
+  "id": "glNvuAm5w5dee8PU",
+  "tags": []
+}

@@ -1,0 +1,191 @@
+{
+  "name": "INV-03 Registrar Salida",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "registrar-salida",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "4729cff0-4951-46b0-b37c-c8869cab6cd6",
+      "name": "Webhook",
+      "webhookId": "e00dec06-427d-47a5-978b-cb69c897355d"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SET search_path TO inventario;\n\nWITH nueva_salida AS (\n    INSERT INTO salidas (producto_id, cantidad, motivo, notas)\n    VALUES (\n        {{ $json.body.producto_id }},\n        {{ $json.body.cantidad }},\n        '{{ $json.body.motivo }}',\n        '{{ $json.body.notas }}'\n    )\n    RETURNING id, producto_id, cantidad, motivo, notas, fecha\n)\nSELECT \n    s.id,\n    s.producto_id,\n    p.nombre AS nombre_producto,\n    s.cantidad,\n    s.motivo,\n    s.notas,\n    s.fecha\nFROM nueva_salida s\nJOIN productos p ON p.id = s.producto_id;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        208,
+        0
+      ],
+      "id": "007bd942-aed5-4be4-838c-8cf7ca8f66bf",
+      "name": "Execute a SQL query",
+      "credentials": {
+        "postgres": {
+          "id": "9VBZqOBt6WDgRTdn",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        992,
+        0
+      ],
+      "id": "480d62b5-29c6-4eab-a23e-37b494b4b140",
+      "name": "Respond to Webhook"
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $input.first().json;\n\nconst telegramMsg = ` Salida de inventario registrada\n\nProducto ID: ${item.producto_id}\nProducto: ${item.nombre_producto}\nCantidad: ${item.cantidad} unidades\nMotivo: ${item.motivo || 'Sin motivo'}\nNotas: ${item.notas || 'Sin notas'}\nFecha: ${new Date(item.fecha).toLocaleDateString('es-GT')}`;\n\nreturn [{\n  json: {\n    ...item,\n    telegram: telegramMsg\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        416,
+        0
+      ],
+      "id": "29e7a3b8-948b-4648-814d-0cd5b28385ba",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "chatId": "7388546974",
+        "text": "={{ $json.telegram }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        624,
+        0
+      ],
+      "id": "0d4c6131-c010-4cdb-8390-cf1204922828",
+      "name": "Send a text message",
+      "webhookId": "8891bbb3-cc11-488f-a598-d27154342fa3",
+      "credentials": {
+        "telegramApi": {
+          "id": "RkPVrYJQCEMJszGV",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fromEmail": "mjomlem.21@gmail.com",
+        "toEmail": "mjomlem.21@gmail.com",
+        "subject": "=Salida — {{ $('Code in JavaScript').first().json.nombre_producto }}\n",
+        "html": "=<h2>Salida de inventario registrada</h2>\n<table border=\"1\" cellpadding=\"8\" style=\"border-collapse:collapse;width:50%\">\n  <tr style=\"background:#fdecea\">\n    <th>Campo</th>\n    <th>Valor</th>\n  </tr>\n<tr><td>Producto ID</td><td>{{ $('Code in JavaScript').first().json.producto_id }}</td></tr>\n<tr><td>Producto</td><td><b>{{ $('Code in JavaScript').first().json.nombre_producto }}</b></td></tr>\n  <tr><td>Cantidad</td><td>{{ $('Code in JavaScript').first().json.cantidad }} unidades</td></tr>\n  <tr><td>Motivo</td><td>{{ $('Code in JavaScript').first().json.motivo }}</td></tr>\n  <tr><td>Notas</td><td>{{ $('Code in JavaScript').first().json.notas }}</td></tr>\n  <tr><td>Fecha</td><td>{{ $('Code in JavaScript').first().json.fecha }}</td></tr>\n</table>",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        832,
+        0
+      ],
+      "id": "b33b8c52-6491-4695-898b-7616252ca4ae",
+      "name": "Send an Email",
+      "webhookId": "520d6a68-5f20-43c4-818e-95870f6f9e4c",
+      "credentials": {
+        "smtp": {
+          "id": "9HwKAKjIDJqeSz1u",
+          "name": "Gmail SMTP"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Execute a SQL query",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute a SQL query": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Send a text message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send a text message": {
+      "main": [
+        [
+          {
+            "node": "Send an Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send an Email": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
+    "errorWorkflow": "4EOToqAqaYg788QW",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "versionId": "f1aade99-720e-4322-ad76-398d6f1b43c4",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "a754d5b26c3afea1a6891fc0c770d0c72bb86b3273f13b42c964bbca1908b096"
+  },
+  "id": "V52iYWH2DtJ2Yhot",
+  "tags": []
+}

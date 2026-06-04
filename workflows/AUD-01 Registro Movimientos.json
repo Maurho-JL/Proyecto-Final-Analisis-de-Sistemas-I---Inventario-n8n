@@ -1,0 +1,102 @@
+{
+  "name": "AUD-01 Registro Movimientos",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "registro-movimientos",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "609f1077-9beb-4216-83ed-2084da5c5377",
+      "name": "Webhook",
+      "webhookId": "4b692126-0168-4465-9d03-2d53c6cf643a"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SET search_path TO inventario;\n\nSELECT \n    'entrada'           AS tipo,\n    e.id                AS movimiento_id,\n    p.codigo,\n    p.nombre            AS producto,\n    e.cantidad,\n    pr.nombre           AS proveedor,\n    NULL                AS motivo,\n    e.notas,\n    e.fecha\nFROM entradas e\nJOIN productos p  ON p.id = e.producto_id\nLEFT JOIN proveedores pr ON pr.id = e.proveedor_id\n\nUNION ALL\n\nSELECT \n    'salida'            AS tipo,\n    s.id                AS movimiento_id,\n    p.codigo,\n    p.nombre            AS producto,\n    s.cantidad,\n    NULL                AS proveedor,\n    s.motivo,\n    s.notas,\n    s.fecha\nFROM salidas s\nJOIN productos p ON p.id = s.producto_id\n\nUNION ALL\n\nSELECT \n    'venta'             AS tipo,\n    dv.id               AS movimiento_id,\n    p.codigo,\n    p.nombre            AS producto,\n    dv.cantidad,\n    NULL                AS proveedor,\n    NULL                AS motivo,\n    cl.nombre           AS notas,\n    v.fecha\nFROM detalle_venta dv\nJOIN productos p  ON p.id = dv.producto_id\nJOIN ventas v     ON v.id = dv.venta_id\nJOIN clientes cl  ON cl.id = v.cliente_id\n\nORDER BY fecha DESC\nLIMIT 50;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        208,
+        0
+      ],
+      "id": "6c724de8-0a5d-4b59-bf17-bac41548ce22",
+      "name": "Execute a SQL query",
+      "credentials": {
+        "postgres": {
+          "id": "9VBZqOBt6WDgRTdn",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "allIncomingItems",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        384,
+        0
+      ],
+      "id": "e50f7bcc-31a0-469c-b5b7-b65999dbe8f6",
+      "name": "Respond to Webhook"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Execute a SQL query",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute a SQL query": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Respond to Webhook": {
+      "main": [
+        []
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
+    "errorWorkflow": "4EOToqAqaYg788QW",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "versionId": "0e99b45c-d292-42cb-beae-edc9363535a7",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "a754d5b26c3afea1a6891fc0c770d0c72bb86b3273f13b42c964bbca1908b096"
+  },
+  "id": "h0G1EqgTQXu6rylY",
+  "tags": []
+}

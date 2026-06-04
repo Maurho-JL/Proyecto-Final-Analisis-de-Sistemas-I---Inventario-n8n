@@ -1,0 +1,164 @@
+{
+  "name": "AUD-11 Notificar Cambios Precio",
+  "nodes": [
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\n\nconst filasHTML = items.map(i => `\n    <tr>\n        <td>${i.json.codigo}</td>\n        <td>${i.json.producto}</td>\n        <td>${i.json.categoria}</td>\n        <td>Q${parseFloat(i.json.precio_anterior).toFixed(2)}</td>\n        <td><b>Q${parseFloat(i.json.precio_nuevo).toFixed(2)}</b></td>\n        <td>${parseFloat(i.json.diferencia) >= 0 ? '+' : ''}Q${parseFloat(i.json.diferencia).toFixed(2)}</td>\n        <td>${i.json.cambio_porcentaje}%</td>\n        <td>${i.json.fecha}</td>\n    </tr>\n`).join('');\n\nconst telegramMsg = ` Historial de cambios de precio\n${new Date().toLocaleDateString('es-GT')}\n\nTotal cambios: ${items.length}\n\nÚltimos cambios:\n${items.slice(0,5).map(i =>\n    ` ${i.json.producto}\\n   Anterior: Q${parseFloat(i.json.precio_anterior).toFixed(2)} → Nuevo: Q${parseFloat(i.json.precio_nuevo).toFixed(2)} (${i.json.cambio_porcentaje}%)`\n).join('\\n')}\n\nVer tabla completa en su correo.`;\n\nreturn [{\n    json: {\n        total: items.length,\n        filas_html: filasHTML,\n        telegram: telegramMsg\n    }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        48,
+        0
+      ],
+      "id": "3c059572-d4ed-41c0-b3c7-17a6f9bf8e10",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "fromEmail": "mjomlem.21@gmail.com",
+        "toEmail": "mjomlem.21@gmail.com",
+        "subject": "=Cambios de precio — {{ $now.format('dd/MM/yyyy') }}",
+        "html": "=<h2> Historial de cambios de precio</h2>\n<p><b>Total cambios:</b> {{ $('Code in JavaScript').first().json.total }}</p>\n<table border=\"1\" cellpadding=\"8\" style=\"border-collapse:collapse;width:100%\">\n  <tr style=\"background:#fff3cd\">\n    <th>Código</th><th>Producto</th><th>Categoría</th><th>Precio anterior</th><th>Precio nuevo</th><th>Diferencia</th><th>Cambio %</th><th>Fecha</th>\n  </tr>\n  {{ $('Code in JavaScript').first().json.filas_html }}\n</table>",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        432,
+        -16
+      ],
+      "id": "08629ae7-9ee9-4cd3-b8b7-978810dcf928",
+      "name": "Send an Email",
+      "webhookId": "9c1e55b2-b533-4094-a691-3801f9947d45",
+      "credentials": {
+        "smtp": {
+          "id": "9HwKAKjIDJqeSz1u",
+          "name": "Gmail SMTP"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "path": "notificar-cambios-precio",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -320,
+        16
+      ],
+      "id": "349d8cae-3c2f-4f19-a77b-476ec8784f51",
+      "name": "Webhook",
+      "webhookId": "c865e18a-7866-470b-b22e-0ef27ba4fdea"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SET search_path TO inventario;\n\nSELECT \n    p.codigo,\n    p.nombre        AS producto,\n    c.nombre        AS categoria,\n    p.precio_venta  AS precio_actual,\n    p.actualizado_en::DATE AS ultima_actualizacion\nFROM productos p\nJOIN categorias c ON c.id = p.categoria_id\nORDER BY p.actualizado_en DESC;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        -128,
+        16
+      ],
+      "id": "fef0d531-4525-4ac4-97a4-636bdd31b983",
+      "name": "Execute a SQL query",
+      "credentials": {
+        "postgres": {
+          "id": "9VBZqOBt6WDgRTdn",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "7388546974",
+        "text": "={{ $json.telegram }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        256,
+        0
+      ],
+      "id": "b1ec3c2c-b8db-429c-81f7-4217d8333987",
+      "name": "Send a text message",
+      "webhookId": "f7faf2cd-fda3-4639-b1fb-8c9614be688a",
+      "credentials": {
+        "telegramApi": {
+          "id": "RkPVrYJQCEMJszGV",
+          "name": "Telegram account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Send a text message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Execute a SQL query",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute a SQL query": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send a text message": {
+      "main": [
+        [
+          {
+            "node": "Send an Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
+    "errorWorkflow": "4EOToqAqaYg788QW",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "versionId": "f6452a6c-ad2b-4b72-99c7-131b1df4d66e",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "a754d5b26c3afea1a6891fc0c770d0c72bb86b3273f13b42c964bbca1908b096"
+  },
+  "id": "aGHx1pshkKpVNPMV",
+  "tags": []
+}

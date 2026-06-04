@@ -1,0 +1,93 @@
+{
+  "name": "REP-03 Ventas Por Categoría",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "ventas-por-categoria",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "0ac66692-6961-48a3-b557-b4ab05d68a87",
+      "name": "Webhook",
+      "webhookId": "9a9c9d68-d63f-4b4e-b3bc-d956abd70974"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SET search_path TO inventario;\n\nSELECT \n    c.nombre                                AS categoria,\n    COUNT(DISTINCT v.id)                    AS total_ventas,\n    SUM(dv.cantidad)                        AS unidades_vendidas,\n    SUM(dv.cantidad * dv.precio_unitario)   AS ingresos_totales,\n    ROUND(\n        SUM(dv.cantidad * dv.precio_unitario) * 100.0 /\n        SUM(SUM(dv.cantidad * dv.precio_unitario)) OVER (), 2\n    )                                       AS porcentaje_ingresos\nFROM detalle_venta dv\nJOIN productos p  ON p.id = dv.producto_id\nJOIN categorias c ON c.id = p.categoria_id\nJOIN ventas v     ON v.id = dv.venta_id\nGROUP BY c.nombre\nORDER BY ingresos_totales DESC;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        208,
+        0
+      ],
+      "id": "d905295b-a141-4f14-b068-e3f6eac2f5bc",
+      "name": "Execute a SQL query",
+      "credentials": {
+        "postgres": {
+          "id": "9VBZqOBt6WDgRTdn",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "allIncomingItems",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        416,
+        0
+      ],
+      "id": "655f495a-ed13-4865-ac4c-e22bba0cd7fb",
+      "name": "Respond to Webhook"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Execute a SQL query",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute a SQL query": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "f7ffb053-b607-40b2-bcf0-756157f10887",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "a754d5b26c3afea1a6891fc0c770d0c72bb86b3273f13b42c964bbca1908b096"
+  },
+  "id": "3p0iMvK3g6HSaw1y",
+  "tags": []
+}

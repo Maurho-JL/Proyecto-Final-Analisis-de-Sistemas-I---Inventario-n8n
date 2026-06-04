@@ -1,0 +1,191 @@
+{
+  "name": "INV-02 Registrar Entrada",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "registrar-entrada",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "53e7164c-59f9-4899-bd28-b136802834d1",
+      "name": "Webhook",
+      "webhookId": "b87ff7b5-a700-4eaf-a46e-e840879855f0"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SET search_path TO inventario;\n\nWITH nueva_entrada AS (\n    INSERT INTO entradas (producto_id, proveedor_id, cantidad, costo_unitario, notas)\n    VALUES (\n        {{ $json.body.producto_id }},\n        {{ $json.body.proveedor_id }},\n        {{ $json.body.cantidad }},\n        {{ $json.body.costo_unitario }},\n        '{{ $json.body.notas }}'\n    )\n    RETURNING id, producto_id, proveedor_id, cantidad, costo_unitario, notas, fecha\n)\nSELECT \n    e.id,\n    e.producto_id,\n    p.nombre AS nombre_producto,\n    e.proveedor_id,\n    e.cantidad,\n    e.costo_unitario,\n    e.notas,\n    e.fecha\nFROM nueva_entrada e\nJOIN productos p ON p.id = e.producto_id;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        208,
+        0
+      ],
+      "id": "4d4eba47-f806-4c23-b70a-54240bbbb6b2",
+      "name": "Execute a SQL query",
+      "credentials": {
+        "postgres": {
+          "id": "9VBZqOBt6WDgRTdn",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        928,
+        0
+      ],
+      "id": "dc8ea9ee-18d5-4062-a07b-dee1d0a9645d",
+      "name": "Respond to Webhook"
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $input.first().json;\n\nconst telegramMsg = ` Entrada de mercadería registrada\n\nProducto ID: ${item.producto_id}\nProducto: ${item.nombre_producto}\nCantidad: ${item.cantidad} unidades\nCosto unitario: Q${item.costo_unitario}\nNotas: ${item.notas || 'Sin notas'}\nFecha: ${new Date(item.fecha).toLocaleDateString('es-GT')}`;\n\nreturn [{\n  json: {\n    ...item,\n    telegram: telegramMsg\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        384,
+        0
+      ],
+      "id": "2d542670-1ca5-451b-baa6-60095e1ad12a",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "chatId": "7388546974",
+        "text": "={{ $json.telegram }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        544,
+        0
+      ],
+      "id": "f79f404d-dc79-4fcf-ba82-dd2bb9593c1b",
+      "name": "Send a text message",
+      "webhookId": "dca49759-454a-4c53-9190-60bab2d5520e",
+      "credentials": {
+        "telegramApi": {
+          "id": "RkPVrYJQCEMJszGV",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fromEmail": "mjomlem.21@gmail.com",
+        "toEmail": "mjomlem.21@gmail.com",
+        "subject": "=Entrada registrada — Producto ID {{ $('Code in JavaScript').first().json.producto_id }}",
+        "html": "=<h2> Entrada de mercadería registrada</h2>\n<table border=\"1\" cellpadding=\"8\" style=\"border-collapse:collapse;width:50%\">\n  <tr style=\"background:#e8f0fb\">\n    <th>Campo</th>\n    <th>Valor</th>\n  </tr>\n  <tr><td>Producto ID</td><td>{{ $('Code in JavaScript').first().json.producto_id }}</td></tr>\n  <tr><td>Producto</td><td><b>{{ $('Code in JavaScript').first().json.nombre_producto }}</b></td></tr>\n  <tr><td>Cantidad</td><td>{{ $('Code in JavaScript').first().json.cantidad }} unidades</td></tr>\n  <tr><td>Costo unitario</td><td>Q{{ $('Code in JavaScript').first().json.costo_unitario }}</td></tr>\n  <tr><td>Notas</td><td>{{ $('Code in JavaScript').first().json.notas }}</td></tr>\n  <tr><td>Fecha</td><td>{{ $('Code in JavaScript').first().json.fecha }}</td></tr>\n</table>",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        752,
+        0
+      ],
+      "id": "f72c0603-c8e3-4cd7-9725-2f308bb483c8",
+      "name": "Send an Email",
+      "webhookId": "c813ab2b-6428-44c7-99f3-38756b4c6270",
+      "credentials": {
+        "smtp": {
+          "id": "9HwKAKjIDJqeSz1u",
+          "name": "Gmail SMTP"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Execute a SQL query",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute a SQL query": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Send a text message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send a text message": {
+      "main": [
+        [
+          {
+            "node": "Send an Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send an Email": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
+    "errorWorkflow": "4EOToqAqaYg788QW",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "versionId": "c07649be-da60-4eeb-a319-0bdd68cd664c",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "a754d5b26c3afea1a6891fc0c770d0c72bb86b3273f13b42c964bbca1908b096"
+  },
+  "id": "OYENviihrFugZk0n",
+  "tags": []
+}

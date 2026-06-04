@@ -1,0 +1,191 @@
+{
+  "name": "INV-04 — Actualizar precio de producto",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "actualizar-precio",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "737497a5-bd0b-48d9-98df-80db1fff0e71",
+      "name": "Webhook",
+      "webhookId": "71fcd7a1-0cd4-4589-b1e0-cd02e02a0354"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SET search_path TO inventario;\n\nWITH precio_anterior AS (\n    SELECT precio_venta AS precio_old\n    FROM productos\n    WHERE codigo = '{{ $json.body.codigo }}'\n)\nUPDATE productos \nSET precio_venta = {{ $json.body.precio_venta }}\nWHERE codigo = '{{ $json.body.codigo }}'\nRETURNING \n    id,\n    codigo,\n    nombre,\n    precio_venta AS precio_nuevo,\n    (SELECT precio_old FROM precio_anterior) AS precio_anterior,\n    actualizado_en;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        208,
+        0
+      ],
+      "id": "0023eb59-4d42-4267-a48e-df4d6e31d9b9",
+      "name": "Execute a SQL query",
+      "credentials": {
+        "postgres": {
+          "id": "9VBZqOBt6WDgRTdn",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        976,
+        0
+      ],
+      "id": "bd63aad7-08f3-44a9-84ec-3987606761ee",
+      "name": "Respond to Webhook"
+    },
+    {
+      "parameters": {
+        "chatId": "7388546974",
+        "text": "={{ $json.telegram }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        592,
+        0
+      ],
+      "id": "4c7519f6-8efb-44d5-ae53-8dc1ef4b8c12",
+      "name": "Send a text message",
+      "webhookId": "c9c97a2d-8e74-49d0-a4f8-25c729b0e29a",
+      "credentials": {
+        "telegramApi": {
+          "id": "RkPVrYJQCEMJszGV",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $input.first().json;\n\nconst telegramMsg = ` Precio actualizado\n\nProducto ID: ${item.id}\nProducto: ${item.nombre}\nCódigo: ${item.codigo}\nPrecio anterior: Q${item.precio_anterior}\nNuevo precio: Q${item.precio_nuevo}\nFecha: ${new Date(item.actualizado_en).toLocaleDateString('es-GT')}`;\n\nreturn [{\n  json: {\n    ...item,\n    telegram: telegramMsg\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        416,
+        0
+      ],
+      "id": "aa40dcbc-eb75-44f5-8011-9df67c0ff8a2",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "fromEmail": "mjomlem.21@gmail.com",
+        "toEmail": "mjomlem.21@gmail.com",
+        "subject": "=Precio actualizado — {{ $('Code in JavaScript').first().json.codigo }}",
+        "html": "=<h2> Precio actualizado</h2>\n<table border=\"1\" cellpadding=\"8\" style=\"border-collapse:collapse;width:50%\">\n  <tr style=\"background:#fff3cd\">\n    <th>Campo</th>\n    <th>Valor</th>\n  </tr>\n  <tr><td>Producto ID</td><td>{{ $('Code in JavaScript').first().json.id }}</td></tr>\n  <tr><td>Código</td><td>{{ $('Code in JavaScript').first().json.codigo }}</td></tr>\n  <tr><td>Producto</td><td><b>{{ $('Code in JavaScript').first().json.nombre }}</b></td></tr>\n  <tr><td>Precio anterior</td><td>Q{{ $('Code in JavaScript').first().json.precio_anterior }}</td></tr>\n  <tr><td>Nuevo precio</td><td><b>Q{{ $('Code in JavaScript').first().json.precio_nuevo }}</b></td></tr>\n  <tr><td>Fecha</td><td>{{ $('Code in JavaScript').first().json.actualizado_en }}</td></tr>\n</table>",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        800,
+        0
+      ],
+      "id": "27e0405f-8594-4d63-b3a5-e4f8332d2478",
+      "name": "Send an Email",
+      "webhookId": "c2862d1d-0ae9-4419-8d0c-f96fde13e970",
+      "credentials": {
+        "smtp": {
+          "id": "9HwKAKjIDJqeSz1u",
+          "name": "Gmail SMTP"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Execute a SQL query",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute a SQL query": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send a text message": {
+      "main": [
+        [
+          {
+            "node": "Send an Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Send a text message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send an Email": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
+    "errorWorkflow": "4EOToqAqaYg788QW",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "versionId": "0f381c75-7332-4578-93d2-5e041d5ab770",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "a754d5b26c3afea1a6891fc0c770d0c72bb86b3273f13b42c964bbca1908b096"
+  },
+  "id": "QH95YK67n1W5fJxG",
+  "tags": []
+}

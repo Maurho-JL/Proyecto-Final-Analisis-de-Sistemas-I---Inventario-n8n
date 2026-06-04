@@ -1,0 +1,187 @@
+{
+  "name": "VEN-01 Registrar Venta",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "registrar-venta",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "aff44ff6-521b-4e54-82a3-021a9030aef4",
+      "name": "Webhook",
+      "webhookId": "c615d34c-259d-45e4-918d-8e414c4e6910"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SET search_path TO inventario;\n\nWITH nueva_venta AS (\n    INSERT INTO ventas (cliente_id, fecha)\n    VALUES (\n        {{ $json.body.cliente_id }},\n        NOW()\n    )\n    RETURNING id, cliente_id\n),\ndetalle_insertado AS (\n    INSERT INTO detalle_venta (venta_id, producto_id, cantidad, precio_unitario)\n    SELECT \n        nueva_venta.id,\n        d.producto_id,\n        d.cantidad,\n        d.precio_unitario\n    FROM nueva_venta,\n    LATERAL (\n        SELECT * FROM json_to_recordset(\n            '{{ JSON.stringify($json.body.detalle) }}'::json\n        ) AS d(producto_id INT, cantidad INT, precio_unitario NUMERIC)\n    ) d\n    RETURNING venta_id, producto_id, cantidad, precio_unitario\n)\nSELECT \n    di.venta_id,\n    nv.cliente_id,\n    cl.nombre          AS nombre_cliente,\n    di.producto_id,\n    p.nombre           AS nombre_producto,\n    di.cantidad,\n    di.precio_unitario,\n    di.cantidad * di.precio_unitario AS subtotal\nFROM detalle_insertado di\nJOIN nueva_venta nv    ON nv.id = di.venta_id\nJOIN clientes cl       ON cl.id = nv.cliente_id\nJOIN productos p       ON p.id = di.producto_id;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        208,
+        0
+      ],
+      "id": "63bfd124-14d2-4e17-8e83-b51c8da317df",
+      "name": "Execute a SQL query",
+      "credentials": {
+        "postgres": {
+          "id": "9VBZqOBt6WDgRTdn",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        1024,
+        0
+      ],
+      "id": "6ffa8abc-305f-43c4-a659-824806bdc652",
+      "name": "Respond to Webhook"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst item0 = items[0].json;\n\nconst totalVenta = items.reduce((sum, i) => sum + parseFloat(i.json.subtotal), 0);\n\nconst productosLineas = items.map(i =>\n    ` ${i.json.nombre_producto} (ID: ${i.json.producto_id})\\n   Cant: ${i.json.cantidad} | Precio: Q${i.json.precio_unitario} | Subtotal: Q${parseFloat(i.json.subtotal).toFixed(2)}`\n).join('\\n');\n\nconst filasHTML = items.map(i => `\n    <tr>\n        <td>${i.json.producto_id}</td>\n        <td>${i.json.nombre_producto}</td>\n        <td>${i.json.cantidad}</td>\n        <td>Q${i.json.precio_unitario}</td>\n        <td>Q${parseFloat(i.json.subtotal).toFixed(2)}</td>\n    </tr>\n`).join('');\n\nconst telegramMsg = `🛒 Nueva venta registrada\n\nVenta ID: #${item0.venta_id}\nCliente ID: ${item0.cliente_id}\nCliente: ${item0.nombre_cliente}\nTotal: Q${totalVenta.toFixed(2)}\n\nProductos:\n${productosLineas}`;\n\nreturn [{\n    json: {\n        venta_id: item0.venta_id,\n        cliente_id: item0.cliente_id,\n        nombre_cliente: item0.nombre_cliente,\n        total: totalVenta.toFixed(2),\n        filas_html: filasHTML,\n        telegram: telegramMsg\n    }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        416,
+        0
+      ],
+      "id": "b4065236-67aa-4341-97be-036b55246e6a",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "chatId": "7388546974",
+        "text": "={{ $json.telegram }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        624,
+        0
+      ],
+      "id": "9136b6a1-3123-400c-9961-fc308f0e301f",
+      "name": "Send a text message",
+      "webhookId": "5a7f34ad-beef-4b5e-8a1a-eed12e12ee20",
+      "credentials": {
+        "telegramApi": {
+          "id": "RkPVrYJQCEMJszGV",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fromEmail": "mjomlem.21@gmail.com",
+        "toEmail": "mjomlem.21@gmail.com",
+        "subject": "=Nueva venta #{{ $('Code in JavaScript').first().json.venta_id }} — Q{{ $('Code in JavaScript').first().json.total }}",
+        "html": "=<h2> Nueva venta registrada</h2>\n<table border=\"1\" cellpadding=\"8\" style=\"border-collapse:collapse;width:50%\">\n  <tr style=\"background:#e1f5ee\">\n    <th>Campo</th><th>Valor</th>\n  </tr>\n  <tr><td>Venta ID</td><td>#{{ $('Code in JavaScript').first().json.venta_id }}</td></tr>\n  <tr><td>Cliente ID</td><td>{{ $('Code in JavaScript').first().json.cliente_id }}</td></tr>\n  <tr><td>Cliente</td><td><b>{{ $('Code in JavaScript').first().json.nombre_cliente }}</b></td></tr>\n  <tr><td>Total</td><td><b>Q{{ $('Code in JavaScript').first().json.total }}</b></td></tr>\n</table>\n<br>\n<h3>Detalle de productos</h3>\n<table border=\"1\" cellpadding=\"8\" style=\"border-collapse:collapse;width:70%\">\n  <tr style=\"background:#e1f5ee\">\n    <th>ID</th><th>Producto</th><th>Cantidad</th><th>Precio unit.</th><th>Subtotal</th>\n  </tr>\n  {{ $('Code in JavaScript').first().json.filas_html }}\n</table>",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        832,
+        0
+      ],
+      "id": "0fd0c24f-bb01-4df0-90a8-99a2809b88c8",
+      "name": "Send an Email",
+      "webhookId": "085eec86-306d-4248-8599-63b7e8f00918",
+      "credentials": {
+        "smtp": {
+          "id": "9HwKAKjIDJqeSz1u",
+          "name": "Gmail SMTP"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Execute a SQL query",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute a SQL query": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Send a text message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send a text message": {
+      "main": [
+        [
+          {
+            "node": "Send an Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send an Email": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "8f45786d-b42e-4006-96a0-6f3d36143c66",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "a754d5b26c3afea1a6891fc0c770d0c72bb86b3273f13b42c964bbca1908b096"
+  },
+  "id": "94X4hmFQqXF9MdG6",
+  "tags": []
+}

@@ -1,0 +1,97 @@
+{
+  "name": "CLI-04 Clientes Frecuentes",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "clientes-frecuentes",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "e2e2f5f6-1c03-41a1-b82d-d633704a857d",
+      "name": "Webhook",
+      "webhookId": "2f3f7e6a-a91f-46ca-a468-05bf83a27fd3"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SET search_path TO inventario;\n\nSELECT \n    c.id,\n    c.nombre                    AS cliente,\n    COUNT(v.id)                 AS total_compras,\n    COALESCE(SUM(v.total), 0)  AS total_gastado,\n    MAX(v.fecha)::DATE          AS ultima_compra,\n    CASE\n        WHEN COUNT(v.id) >= 5 THEN 'VIP'\n        WHEN COUNT(v.id) >= 3 THEN 'frecuente'\n        WHEN COUNT(v.id) >= 1 THEN 'ocasional'\n        ELSE 'sin compras'\n    END                         AS categoria_cliente\nFROM clientes c\nLEFT JOIN ventas v ON v.cliente_id = c.id\nGROUP BY c.id, c.nombre\nORDER BY total_compras DESC, total_gastado DESC;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        208,
+        0
+      ],
+      "id": "5c44af08-819f-420c-a7c9-31cdd13a8e4e",
+      "name": "Execute a SQL query",
+      "credentials": {
+        "postgres": {
+          "id": "9VBZqOBt6WDgRTdn",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "allIncomingItems",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        416,
+        0
+      ],
+      "id": "cdeb3678-ee5f-42c6-8793-1ee59b6760eb",
+      "name": "Respond to Webhook"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Execute a SQL query",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute a SQL query": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
+    "errorWorkflow": "4EOToqAqaYg788QW",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "versionId": "0aa9cd25-22f7-47ac-adc4-05fd7dc7d800",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "a754d5b26c3afea1a6891fc0c770d0c72bb86b3273f13b42c964bbca1908b096"
+  },
+  "id": "BceULBjX8kOhwoIb",
+  "tags": []
+}

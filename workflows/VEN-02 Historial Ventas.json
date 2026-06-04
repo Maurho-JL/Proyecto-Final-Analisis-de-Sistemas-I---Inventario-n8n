@@ -1,0 +1,97 @@
+{
+  "name": "VEN-02 Historial Ventas",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "historial-ventas",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "d5b0d266-fc3a-4323-b23b-debfa670fe30",
+      "name": "Webhook",
+      "webhookId": "8e28b350-e0a6-43aa-8fc2-51d6bfb4ef3b"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SET search_path TO inventario;\n\nSELECT \n    v.id                                    AS venta_id,\n    cl.nombre                               AS cliente,\n    v.fecha::DATE                           AS fecha,\n    v.total,\n    COUNT(dv.id)                            AS total_productos,\n    SUM(dv.cantidad)                        AS total_unidades,\n    STRING_AGG(p.nombre, ', ')              AS productos\nFROM ventas v\nJOIN clientes cl      ON cl.id = v.cliente_id\nJOIN detalle_venta dv ON dv.venta_id = v.id\nJOIN productos p      ON p.id = dv.producto_id\nGROUP BY v.id, cl.nombre, v.fecha, v.total\nORDER BY v.fecha DESC;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        208,
+        0
+      ],
+      "id": "f295fac7-5f68-45ae-93f8-5f3ff1834940",
+      "name": "Execute a SQL query",
+      "credentials": {
+        "postgres": {
+          "id": "9VBZqOBt6WDgRTdn",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "allIncomingItems",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        416,
+        0
+      ],
+      "id": "f328d3bc-2343-463a-9761-3b61f166fa10",
+      "name": "Respond to Webhook"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Execute a SQL query",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute a SQL query": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
+    "errorWorkflow": "4EOToqAqaYg788QW",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "versionId": "c41d1d03-af80-4969-a1f2-36e7ba3f73c9",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "a754d5b26c3afea1a6891fc0c770d0c72bb86b3273f13b42c964bbca1908b096"
+  },
+  "id": "Wkvp1AkNFhOokG1y",
+  "tags": []
+}

@@ -1,0 +1,841 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Inventario — Tienda Tech</title>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+    <!-- TOPBAR -->
+    <div class="topbar">
+        <div class="topbar-left">
+            <span class="topbar-title">Sistema de Inventario</span>
+            <span class="topbar-sep"></span>
+            <span class="topbar-sub">Tienda Tech</span>
+        </div>
+        <div class="topbar-right">
+            <span id="topbar-fecha"></span>
+        </div>
+    </div>
+
+    <!-- SIDEBAR -->
+    <div class="sidebar">
+        <div class="sidebar-brand">
+            <div class="sidebar-brand-icon">
+                <i class="fa-solid fa-boxes-stacked"></i>
+            </div>
+            <div>
+                <div class="sidebar-brand-text">Inventario</div>
+                <div class="sidebar-brand-sub">Tienda Tech</div>
+            </div>
+        </div>
+        <div class="sidebar-menu">
+            <a href="#" class="menu-item active" onclick="mostrarSeccion('dashboard', this)">
+                <span class="menu-icon"><i class="fa-solid fa-gauge"></i></span>
+                <span>Dashboard</span>
+            </a>
+            <div class="menu-group">Inventario</div>
+            <a href="#" class="menu-item" onclick="mostrarSeccion('inventario', this)">
+                <span class="menu-icon"><i class="fa-solid fa-table-list"></i></span>
+                <span>Ver inventario</span>
+            </a>
+            <a href="#" class="menu-item" onclick="mostrarSeccion('nuevo-producto', this)">
+                <span class="menu-icon"><i class="fa-solid fa-plus"></i></span>
+                <span>Nuevo producto</span>
+            </a>
+            <a href="#" class="menu-item" onclick="mostrarSeccion('entrada', this)">
+                <span class="menu-icon"><i class="fa-solid fa-download"></i></span>
+                <span>Registrar entrada</span>
+            </a>
+            <a href="#" class="menu-item" onclick="mostrarSeccion('salida', this)">
+                <span class="menu-icon"><i class="fa-solid fa-upload"></i></span>
+                <span>Registrar salida</span>
+            </a>
+            <a href="#" class="menu-item" onclick="mostrarSeccion('precio', this)">
+                <span class="menu-icon"><i class="fa-solid fa-tag"></i></span>
+                <span>Actualizar precio</span>
+            </a>
+            <div class="menu-group">Ventas</div>
+            <a href="#" class="menu-item" onclick="mostrarSeccion('nueva-venta', this)">
+                <span class="menu-icon"><i class="fa-solid fa-cart-plus"></i></span>
+                <span>Nueva venta</span>
+            </a>
+            <a href="#" class="menu-item" onclick="mostrarSeccion('historial-ventas', this)">
+                <span class="menu-icon"><i class="fa-solid fa-receipt"></i></span>
+                <span>Historial ventas</span>
+            </a>
+            <div class="menu-group">Clientes</div>
+            <a href="#" class="menu-item" onclick="mostrarSeccion('clientes', this)">
+                <span class="menu-icon"><i class="fa-solid fa-users"></i></span>
+                <span>Clientes</span>
+            </a>
+            <div class="menu-group">Reportes</div>
+            <a href="#" class="menu-item" onclick="mostrarSeccion('reportes', this)">
+                <span class="menu-icon"><i class="fa-solid fa-chart-bar"></i></span>
+                <span>Reportes</span>
+            </a>
+            <div class="menu-group">Auditoría</div>
+            <a href="#" class="menu-item" onclick="mostrarSeccion('auditoria', this)">
+                <span class="menu-icon"><i class="fa-solid fa-shield-halved"></i></span>
+                <span>Auditoría</span>
+            </a>
+        </div>
+    </div>
+
+    <!-- CONTENIDO PRINCIPAL -->
+    <div class="content">
+
+        <!-- ========================= -->
+        <!-- DASHBOARD                 -->
+        <!-- ========================= -->
+        <div id="dashboard" class="seccion">
+            <div class="page-header">
+                <h2>Dashboard</h2>
+                <span class="page-sub">Resumen general del negocio</span>
+            </div>
+
+            <!-- TARJETAS DE RESUMEN -->
+            <div class="cards-grid">
+                <div class="card-stat c-blue">
+                    <div class="card-stat-icon"><i class="fa-solid fa-boxes-stacked"></i></div>
+                    <div class="card-stat-label">Total productos</div>
+                    <div class="card-stat-value" id="stat-productos">—</div>
+                    <div class="card-stat-sub" id="stat-stock-bajo">cargando...</div>
+                </div>
+                <div class="card-stat c-green">
+                    <div class="card-stat-icon"><i class="fa-solid fa-receipt"></i></div>
+                    <div class="card-stat-label">Ventas del día</div>
+                    <div class="card-stat-value" id="stat-ventas">—</div>
+                    <div class="card-stat-sub" id="stat-ingresos">cargando...</div>
+                </div>
+                <div class="card-stat c-orange">
+                    <div class="card-stat-icon"><i class="fa-solid fa-chart-line"></i></div>
+                    <div class="card-stat-label">Ticket promedio</div>
+                    <div class="card-stat-value" id="stat-ticket">—</div>
+                    <div class="card-stat-sub">del día</div>
+                </div>
+                <div class="card-stat c-red">
+                    <div class="card-stat-icon"><i class="fa-solid fa-triangle-exclamation"></i></div>
+                    <div class="card-stat-label">Alertas activas</div>
+                    <div class="card-stat-value" id="stat-alertas">—</div>
+                    <div class="card-stat-sub">stock bajo o agotado</div>
+                </div>
+            </div>
+
+            <!-- TABLA STOCK RÁPIDO -->
+            <div class="card">
+                <div class="card-header">
+                    <h3>Estado del inventario</h3>
+                    <button class="btn btn-outline" onclick="cargarDashboard()">Actualizar</button>
+                </div>
+                <div class="table-wrap">
+                    <table id="tabla-dashboard">
+                        <thead>
+                            <tr>
+                                <th>Código</th>
+                                <th>Producto</th>
+                                <th>Categoría</th>
+                                <th>Stock</th>
+                                <th>Mínimo</th>
+                                <th>Precio</th>
+                                <th>Estado</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tbody-dashboard">
+                            <tr><td colspan="7" class="loading">Cargando...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- ========================= -->
+        <!-- INVENTARIO                -->
+        <!-- ========================= -->
+        <div id="inventario" class="seccion" style="display:none;">
+            <div class="page-header">
+                <h2>Inventario de productos</h2>
+                <div class="header-actions">
+                    <input type="text" id="buscador" placeholder="Buscar por nombre o código..." oninput="buscarProducto(this.value)">
+                    <button class="btn btn-outline" onclick="cargarInventario()">Actualizar</button>
+                </div>
+            </div>
+            <!-- FILTROS POR CATEGORÍA -->
+            <div id="filtros-categoria" class="filtros-wrap">
+                <button class="btn-filtro active" onclick="filtrarCategoria('todas', this)">Todas</button>
+            </div>
+            <div class="card">
+                <div class="table-wrap">
+                    <table id="tabla-inventario">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Código</th>
+                                <th>Producto</th>
+                                <th>Categoría</th>
+                                <th>Precio</th>
+                                <th>Stock actual</th>
+                                <th>Mínimo</th>
+                                <th>Máximo</th>
+                                <th>Estado</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tbody-inventario">
+                            <tr><td colspan="9" class="loading">Cargando...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- ========================= -->
+        <!-- NUEVO PRODUCTO            -->
+        <!-- ========================= -->
+        <div id="nuevo-producto" class="seccion" style="display:none;">
+            <div class="page-header">
+                <h2>Registrar nuevo producto</h2>
+                <span class="page-sub">El producto se agrega al inventario automáticamente</span>
+            </div>
+            <div class="card form-card">
+                <form id="formNuevoProducto">
+                    <div class="row">
+                        <div class="col">
+                            <label>Código</label>
+                            <input type="text" id="np-codigo" placeholder="Ej: LAP-006" required>
+                        </div>
+                        <div class="col">
+                            <label>Nombre del producto</label>
+                            <input type="text" id="np-nombre" placeholder="Ej: Laptop ASUS 15 i7" required>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col">
+                            <label>ID de categoría</label>
+                            <select id="np-categoria">
+                                <option value="1">1 — Laptops</option>
+                                <option value="2">2 — Celulares</option>
+                                <option value="3">3 — Componentes</option>
+                                <option value="4">4 — Accesorios</option>
+                                <option value="5">5 — Monitores</option>
+                                <option value="6">6 — Redes</option>
+                                <option value="7">7 — Almacenamiento</option>
+                                <option value="8">8 — Software</option>
+                            </select>
+                        </div>
+                        <div class="col">
+                            <label>Precio de venta (Q)</label>
+                            <input type="number" id="np-precio" step="0.01" placeholder="Ej: 4599.00" required>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col">
+                            <label>Stock inicial</label>
+                            <input type="number" id="np-stock" placeholder="Ej: 10" required>
+                        </div>
+                        <div class="col">
+                            <label>Stock mínimo</label>
+                            <input type="number" id="np-minimo" placeholder="Ej: 3" required>
+                        </div>
+                        <div class="col">
+                            <label>Stock máximo</label>
+                            <input type="number" id="np-maximo" placeholder="Ej: 30" required>
+                        </div>
+                    </div>
+                    <div class="btn-group">
+                        <button type="submit" class="btn btn-primary">Registrar producto</button>
+                        <button type="reset" class="btn btn-gray">Limpiar</button>
+                    </div>
+                </form>
+                <div id="np-resultado" class="resultado" style="display:none;"></div>
+            </div>
+        </div>
+
+        <!-- ========================= -->
+        <!-- REGISTRAR ENTRADA         -->
+        <!-- ========================= -->
+        <div id="entrada" class="seccion" style="display:none;">
+            <div class="page-header">
+                <h2>Registrar entrada de mercadería</h2>
+                <span class="page-sub">El stock se actualiza automáticamente</span>
+            </div>
+
+            <!-- PASO 1: PRODUCTO -->
+            <div class="card form-card" style="margin-bottom:16px">
+                <h3 style="margin-bottom:14px">1. Seleccione el producto</h3>
+                <div class="row">
+                    <div class="col">
+                        <label>Buscar por nombre, código o ID</label>
+                        <input type="text" id="entrada-buscar-producto" placeholder="Ej: Laptop, LAP-001 o 1..." oninput="buscarProductoEntrada(this.value)">
+                    </div>
+                    <div class="col">
+                        <label>Filtrar por categoría</label>
+                        <select id="entrada-categoria-filtro" onchange="filtrarProductosEntrada()">
+                            <option value="">Todas las categorías</option>
+                        </select>
+                    </div>
+                </div>
+                <!-- RESULTADOS PRODUCTO -->
+                <div id="entrada-lista-productos" style="margin-top:12px; border:1px solid var(--border); border-radius:8px; overflow:hidden; display:none;">
+                    <table style="margin:0">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Código</th>
+                                <th>Producto</th>
+                                <th>Categoría</th>
+                                <th>Stock</th>
+                                <th>Acción</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tbody-entrada-productos"></tbody>
+                    </table>
+                </div>
+                <!-- PRODUCTO SELECCIONADO -->
+                <div id="entrada-producto-seleccionado" style="display:none; margin-top:10px; background:var(--azul-light); border:1px solid var(--azul-mid); border-radius:8px; padding:10px 14px; display:none; justify-content:space-between; align-items:center;">
+                    <span id="entrada-producto-texto" style="color:var(--azul); font-weight:500; font-size:13px;"></span>
+                    <button type="button" class="btn btn-sm btn-outline" onclick="limpiarProductoEntrada()">Cambiar</button>
+                </div>
+                <input type="hidden" id="entrada-producto">
+            </div>
+
+            <!-- PASO 2: PROVEEDOR -->
+            <div class="card form-card" style="margin-bottom:16px">
+                <h3 style="margin-bottom:14px">2. Seleccione el proveedor</h3>
+                <div class="row">
+                    <div class="col">
+                        <label>Buscar por nombre o ID</label>
+                        <input type="text" id="entrada-buscar-proveedor" placeholder="Ej: TechDistrib o 1..." oninput="buscarProveedorEntrada(this.value)">
+                    </div>
+                </div>
+                <!-- RESULTADOS PROVEEDOR -->
+                <div id="entrada-lista-proveedores" style="margin-top:12px; border:1px solid var(--border); border-radius:8px; overflow:hidden; display:none;">
+                    <table style="margin:0">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Nombre</th>
+                                <th>Contacto</th>
+                                <th>Teléfono</th>
+                                <th>Acción</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tbody-entrada-proveedores"></tbody>
+                    </table>
+                </div>
+                <!-- PROVEEDOR SELECCIONADO -->
+                <div id="entrada-proveedor-seleccionado" style="display:none; margin-top:10px; background:var(--azul-light); border:1px solid var(--azul-mid); border-radius:8px; padding:10px 14px; justify-content:space-between; align-items:center;">
+                    <span id="entrada-proveedor-texto" style="color:var(--azul); font-weight:500; font-size:13px;"></span>
+                    <button type="button" class="btn btn-sm btn-outline" onclick="limpiarProveedorEntrada()">Cambiar</button>
+                </div>
+                <input type="hidden" id="entrada-proveedor">
+            </div>
+
+            <!-- PASO 3: DATOS -->
+            <div class="card form-card">
+                <h3 style="margin-bottom:14px">3. Datos de la entrada</h3>
+                <form id="formEntrada">
+                    <div class="row">
+                        <div class="col">
+                            <label>Cantidad</label>
+                            <input type="number" id="entrada-cantidad" placeholder="Ej: 10" required>
+                        </div>
+                        <div class="col">
+                            <label>Costo unitario (Q)</label>
+                            <input type="number" id="entrada-costo" step="0.01" placeholder="Ej: 3800.00" required>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col">
+                            <label>Notas</label>
+                            <input type="text" id="entrada-notas" placeholder="Ej: Reposición de stock">
+                        </div>
+                    </div>
+                    <div class="btn-group">
+                        <button type="submit" class="btn btn-primary">Registrar entrada</button>
+                        <button type="button" class="btn btn-gray" onclick="limpiarFormEntrada()">Limpiar todo</button>
+                    </div>
+                </form>
+                <div id="entrada-resultado" class="resultado" style="display:none;"></div>
+            </div>
+        </div>
+
+        <!-- ========================= -->
+        <!-- REGISTRAR SALIDA          -->
+        <!-- ========================= -->
+        <div id="salida" class="seccion" style="display:none;">
+            <div class="page-header">
+                <h2>Registrar salida / merma</h2>
+                <span class="page-sub">El stock se reduce automáticamente</span>
+            </div>
+
+            <!-- PASO 1: PRODUCTO -->
+            <div class="card form-card" style="margin-bottom:16px">
+                <h3 style="margin-bottom:14px">1. Seleccione el producto</h3>
+                <div class="row">
+                    <div class="col">
+                        <label>Buscar por nombre, código o ID</label>
+                        <input type="text" id="salida-buscar-producto" placeholder="Ej: Laptop, LAP-001 o 1..." oninput="buscarProductoSalida(this.value)">
+                    </div>
+                    <div class="col">
+                        <label>Filtrar por categoría</label>
+                        <select id="salida-categoria-filtro" onchange="filtrarProductosSalida()">
+                            <option value="">Todas las categorías</option>
+                        </select>
+                    </div>
+                </div>
+                <!-- RESULTADOS -->
+                <div id="salida-lista-productos" style="margin-top:12px; border:1px solid var(--border); border-radius:8px; overflow:hidden; display:none;">
+                    <table style="margin:0">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Código</th>
+                                <th>Producto</th>
+                                <th>Categoría</th>
+                                <th>Stock</th>
+                                <th>Acción</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tbody-salida-productos"></tbody>
+                    </table>
+                </div>
+                <!-- PRODUCTO SELECCIONADO -->
+                <div id="salida-producto-seleccionado" style="display:none; margin-top:10px; background:var(--azul-light); border:1px solid var(--azul-mid); border-radius:8px; padding:10px 14px; justify-content:space-between; align-items:center;">
+                    <span id="salida-producto-texto" style="color:var(--azul); font-weight:500; font-size:13px;"></span>
+                    <button type="button" class="btn btn-sm btn-outline" onclick="limpiarProductoSalida()">Cambiar</button>
+                </div>
+                <input type="hidden" id="salida-producto">
+            </div>
+
+            <!-- PASO 2: DATOS -->
+            <div class="card form-card">
+                <h3 style="margin-bottom:14px">2. Datos de la salida</h3>
+                <form id="formSalida">
+                    <div class="row">
+                        <div class="col">
+                            <label>Cantidad</label>
+                            <input type="number" id="salida-cantidad" placeholder="Ej: 5" required>
+                        </div>
+                        <div class="col">
+                            <label>Motivo</label>
+                            <select id="salida-motivo">
+                                <option value="merma">Merma</option>
+                                <option value="ajuste">Ajuste de inventario</option>
+                                <option value="robo">Robo</option>
+                                <option value="devolucion">Devolución a proveedor</option>
+                                <option value="otro">Otro</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col">
+                            <label>Notas</label>
+                            <input type="text" id="salida-notas" placeholder="Descripción adicional">
+                        </div>
+                    </div>
+                    <div class="btn-group">
+                        <button type="submit" class="btn btn-primary">Registrar salida</button>
+                        <button type="button" class="btn btn-gray" onclick="limpiarFormSalida()">Limpiar todo</button>
+                    </div>
+                </form>
+                <div id="salida-resultado" class="resultado" style="display:none;"></div>
+            </div>
+        </div>
+
+        <!-- ========================= -->
+        <!-- ACTUALIZAR PRECIO         -->
+        <!-- ========================= -->
+        <div id="precio" class="seccion" style="display:none;">
+            <div class="page-header">
+                <h2>Actualizar precio de producto</h2>
+                <span class="page-sub">Notifica automáticamente por Telegram y correo</span>
+            </div>
+
+            <!-- PASO 1: PRODUCTO -->
+            <div class="card form-card" style="margin-bottom:16px">
+                <h3 style="margin-bottom:14px">1. Seleccione el producto</h3>
+                <div class="row">
+                    <div class="col">
+                        <label>Buscar por nombre, código o ID</label>
+                        <input type="text" id="precio-buscar-producto" placeholder="Ej: Laptop, LAP-001 o 1..." oninput="buscarProductoPrecio(this.value)">
+                    </div>
+                    <div class="col">
+                        <label>Filtrar por categoría</label>
+                        <select id="precio-categoria-filtro" onchange="filtrarProductosPrecio()">
+                            <option value="">Todas las categorías</option>
+                        </select>
+                    </div>
+                </div>
+                <!-- RESULTADOS -->
+                <div id="precio-lista-productos" style="margin-top:12px; border:1px solid var(--border); border-radius:8px; overflow:hidden; display:none;">
+                    <table style="margin:0">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Código</th>
+                                <th>Producto</th>
+                                <th>Categoría</th>
+                                <th>Precio actual</th>
+                                <th>Acción</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tbody-precio-productos"></tbody>
+                    </table>
+                </div>
+                <!-- PRODUCTO SELECCIONADO -->
+                <div id="precio-producto-seleccionado" style="display:none; margin-top:10px; background:var(--azul-light); border:1px solid var(--azul-mid); border-radius:8px; padding:10px 14px; justify-content:space-between; align-items:center;">
+                    <span id="precio-producto-texto" style="color:var(--azul); font-weight:500; font-size:13px;"></span>
+                    <button type="button" class="btn btn-sm btn-outline" onclick="limpiarProductoPrecio()">Cambiar</button>
+                </div>
+                <input type="hidden" id="precio-codigo">
+            </div>
+
+            <!-- PASO 2: NUEVO PRECIO -->
+            <div class="card form-card">
+                <h3 style="margin-bottom:14px">2. Ingrese el nuevo precio</h3>
+                <form id="formPrecio">
+                    <div class="row">
+                        <div class="col">
+                            <label>Precio actual</label>
+                            <input type="text" id="precio-actual-display" readonly placeholder="Seleccione un producto primero">
+                        </div>
+                        <div class="col">
+                            <label>Nuevo precio (Q)</label>
+                            <input type="number" id="precio-nuevo" step="0.01" placeholder="Ej: 4799.00" required>
+                        </div>
+                    </div>
+                    <div class="btn-group">
+                        <button type="submit" class="btn btn-primary">Actualizar precio</button>
+                        <button type="button" class="btn btn-gray" onclick="limpiarFormPrecio()">Limpiar todo</button>
+                    </div>
+                </form>
+                <div id="precio-resultado" class="resultado" style="display:none;"></div>
+            </div>
+        </div>
+
+        <!-- ========================= -->
+        <!-- NUEVA VENTA               -->
+        <!-- ========================= -->
+        <div id="nueva-venta" class="seccion" style="display:none;">
+            <div class="page-header">
+                <h2>Registrar nueva venta</h2>
+                <span class="page-sub">El total se calcula automáticamente</span>
+            </div>
+
+            <!-- PASO 1: CLIENTE -->
+            <div class="card form-card" style="margin-bottom:16px">
+                <h3 style="margin-bottom:14px">1. Seleccione el cliente</h3>
+                <div class="row">
+                    <div class="col">
+                        <label>Buscar por nombre o ID</label>
+                        <input type="text" id="venta-buscar-cliente" placeholder="Ej: Luis o 2..." oninput="buscarClienteVenta(this.value)">
+                    </div>
+                </div>
+                <div id="venta-lista-clientes" style="margin-top:12px; border:1px solid var(--border); border-radius:8px; overflow:hidden; display:none;">
+                    <table style="margin:0">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Nombre</th>
+                                <th>Compras</th>
+                                <th>Total gastado</th>
+                                <th>Acción</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tbody-venta-clientes"></tbody>
+                    </table>
+                </div>
+                <div id="venta-cliente-seleccionado" style="display:none; margin-top:10px; background:var(--azul-light); border:1px solid var(--azul-mid); border-radius:8px; padding:10px 14px; justify-content:space-between; align-items:center;">
+                    <span id="venta-cliente-texto" style="color:var(--azul); font-weight:500; font-size:13px;"></span>
+                    <button type="button" class="btn btn-sm btn-outline" onclick="limpiarClienteVenta()">Cambiar</button>
+                </div>
+                <input type="hidden" id="venta-cliente">
+            </div>
+
+            <!-- PASO 2: PRODUCTOS -->
+            <div class="card form-card" style="margin-bottom:16px">
+                <h3 style="margin-bottom:14px">2. Agregue los productos</h3>
+                <div class="row">
+                    <div class="col">
+                        <label>Buscar producto por nombre, código o ID</label>
+                        <input type="text" id="venta-buscar-producto" placeholder="Ej: Laptop, LAP-001 o 1..." oninput="buscarProductoVenta(this.value)">
+                    </div>
+                    <div class="col">
+                        <label>Filtrar por categoría</label>
+                        <select id="venta-categoria-filtro" onchange="filtrarProductosVenta()">
+                            <option value="">Todas las categorías</option>
+                        </select>
+                    </div>
+                </div>
+                <div id="venta-lista-productos" style="margin-top:12px; border:1px solid var(--border); border-radius:8px; overflow:hidden; display:none;">
+                    <table style="margin:0">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Código</th>
+                                <th>Producto</th>
+                                <th>Categoría</th>
+                                <th>Precio</th>
+                                <th>Stock</th>
+                                <th>Acción</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tbody-venta-productos"></tbody>
+                    </table>
+                </div>
+
+                <!-- CARRITO -->
+                <div id="venta-carrito" style="margin-top:16px; display:none;">
+                    <h4 style="margin-bottom:10px; font-size:13px; color:var(--text2)">Productos en la venta:</h4>
+                    <table style="margin:0; border:1px solid var(--border); border-radius:8px; overflow:hidden;">
+                        <thead>
+                            <tr>
+                                <th>Producto</th>
+                                <th>Precio unit.</th>
+                                <th>Cantidad</th>
+                                <th>Subtotal</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody id="tbody-carrito"></tbody>
+                        <tfoot>
+                            <tr style="background:var(--bg2)">
+                                <td colspan="3" style="text-align:right; font-weight:600; padding:10px 14px;">Total estimado:</td>
+                                <td style="font-weight:700; color:var(--sidebar-bg); padding:10px 14px;" id="venta-total">Q0.00</td>
+                                <td></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+
+            <!-- PASO 3: CONFIRMAR -->
+            <div class="card form-card">
+                <h3 style="margin-bottom:14px">3. Confirmar venta</h3>
+                <div id="venta-resumen" style="margin-bottom:12px; font-size:13px; color:var(--text2)">
+                    Seleccione cliente y agregue productos para confirmar.
+                </div>
+                <div class="btn-group">
+                    <button type="button" class="btn btn-primary" onclick="registrarVenta()">Registrar venta</button>
+                    <button type="button" class="btn btn-gray" onclick="limpiarFormVenta()">Limpiar todo</button>
+                </div>
+                <div id="venta-resultado" class="resultado" style="display:none;"></div>
+            </div>
+        </div>
+
+        <!-- ========================= -->
+        <!-- HISTORIAL VENTAS          -->
+        <!-- ========================= -->
+        <div id="historial-ventas" class="seccion" style="display:none;">
+            <div class="page-header">
+                <h2>Historial de ventas</h2>
+                <div class="header-actions">
+                    <button class="btn btn-outline" onclick="cargarHistorialVentas()">Actualizar</button>
+                    <button class="btn btn-primary" onclick="notificarHistorialVentas(this)">Notificar</button>
+                    <button class="btn btn-outline" onclick="descargarPDFVentas()">Exportar PDF</button>
+                </div>
+            </div>
+
+            <!-- FILTROS -->
+            <div class="card form-card" style="margin-bottom:16px">
+                <div class="row">
+                    <div class="col">
+                        <label>Buscar por cliente o ID</label>
+                        <input type="text" id="filtro-venta-cliente" placeholder="Ej: Luis o #5..." oninput="filtrarHistorial()">
+                    </div>
+                    <div class="col">
+                        <label>Fecha desde</label>
+                        <input type="date" id="filtro-fecha-desde" onchange="filtrarHistorial()">
+                    </div>
+                    <div class="col">
+                        <label>Fecha hasta</label>
+                        <input type="date" id="filtro-fecha-hasta" onchange="filtrarHistorial()">
+                    </div>
+                </div>
+                <div style="margin-top:10px; display:flex; gap:10px; align-items:center;">
+                    <button class="btn btn-outline btn-sm" onclick="limpiarFiltrosVentas()">✕ Limpiar filtros</button>
+                    <span id="filtro-contador" style="font-size:12px; color:var(--text3)"></span>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="table-wrap">
+                    <table id="tabla-historial-ventas">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Cliente</th>
+                                <th>Fecha</th>
+                                <th>Productos</th>
+                                <th>Total ventas</th>
+                                <th>Total unidades</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tbody-ventas">
+                            <tr><td colspan="7" class="loading">Cargando...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- ========================= -->
+        <!-- CLIENTES                  -->
+        <!-- ========================= -->
+        <div id="clientes" class="seccion" style="display:none;">
+            <div class="page-header">
+                <h2>Clientes</h2>
+            </div>
+            <div class="two-col">
+                <div class="card form-card">
+                    <h3>Nuevo cliente</h3>
+                    <form id="formCliente" style="margin-top:12px">
+                        <label>Nombre del cliente</label>
+                        <input type="text" id="cliente-nombre" placeholder="Ej: Juan Pérez" required>
+                        <div class="btn-group" style="margin-top:12px">
+                            <button type="submit" class="btn btn-primary">Registrar</button>
+                        </div>
+                    </form>
+                    <div id="cliente-resultado" class="resultado" style="display:none;"></div>
+                </div>
+                <div class="card form-card">
+                    <h3>Buscar cliente</h3>
+                    <div style="margin-top:12px">
+                        <label>Nombre o ID</label>
+                        <input type="text" id="cliente-buscar" placeholder="Ej: Luis o 2">
+                        <button class="btn btn-primary" onclick="buscarCliente()" style="margin-top:10px">Buscar</button>
+                    </div>
+                    <div id="cliente-resultado-busqueda" style="margin-top:12px"></div>
+                </div>
+            </div>
+            <div class="card" style="margin-top:16px">
+                <div class="card-header">
+                    <h3>Clientes frecuentes</h3>
+                    <div style="display:flex; gap:8px;">
+                        <button class="btn btn-outline" onclick="cargarClientesFrecuentes()">Actualizar</button>
+                        <button class="btn btn-primary" onclick="notificarClientesFrecuentes(this)">Notificar</button>
+                        <button class="btn btn-outline" onclick="descargarPDFClientes()">Exportar PDF</button>
+                    </div>
+                </div>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Cliente</th>
+                                <th>Compras</th>
+                                <th>Total gastado</th>
+                                <th>Última compra</th>
+                                <th>Categoría</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tbody-clientes">
+                            <tr><td colspan="5" class="loading">Cargando...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- ========================= -->
+        <!-- REPORTES                  -->
+        <!-- ========================= -->
+        <div id="reportes" class="seccion" style="display:none;">
+            <div class="page-header">
+                <h2>Reportes</h2>
+            </div>
+            <div class="cards-grid">
+                <div class="card-stat clickable" onclick="verReporte('resumen-diario')">
+                    <div class="card-stat-icon"><i class="fa-solid fa-calendar-day"></i></div>
+                    <div class="card-stat-label">Resumen diario</div>
+                    <div class="card-stat-sub">Ver reporte del día</div>
+                </div>
+                <div class="card-stat clickable" onclick="verReporte('mas-vendidos')">
+                    <div class="card-stat-icon"><i class="fa-solid fa-trophy"></i></div>
+                    <div class="card-stat-label">Más vendidos</div>
+                    <div class="card-stat-sub">Top 10 del mes</div>
+                </div>
+                <div class="card-stat clickable" onclick="verReporte('por-categoria')">
+                    <div class="card-stat-icon"><i class="fa-solid fa-folder-open"></i></div>
+                    <div class="card-stat-label">Por categoría</div>
+                    <div class="card-stat-sub">Ingresos por línea</div>
+                </div>
+                <div class="card-stat clickable" onclick="verReporte('margen')">
+                    <div class="card-stat-icon"><i class="fa-solid fa-chart-pie"></i></div>
+                    <div class="card-stat-label">Margen ganancia</div>
+                    <div class="card-stat-sub">Rentabilidad</div>
+                </div>
+            </div>
+            <div class="card" id="reporte-contenido" style="margin-top:16px; display:none;">
+                <div class="card-header">
+                    <h3 id="reporte-titulo">Reporte</h3>
+                    <div style="display:flex; gap:8px;">
+                        <button class="btn btn-outline" onclick="descargarPDFReporte()">Exportar PDF</button>
+                        <button class="btn btn-primary" id="btn-notificar-reporte" onclick="notificarReporte(this)">Notificar</button>
+                        <button class="btn btn-outline" onclick="document.getElementById('reporte-contenido').style.display='none'">Cerrar</button>
+                    </div>
+                </div>
+                <div class="table-wrap" id="reporte-tabla-wrap">
+                    <table>
+                        <thead id="reporte-thead"></thead>
+                        <tbody id="reporte-tbody">
+                            <tr><td class="loading">Cargando...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- ========================= -->
+        <!-- AUDITORÍA                 -->
+        <!-- ========================= -->
+        <div id="auditoria" class="seccion" style="display:none;">
+            <div class="page-header">
+                <h2>Auditoría</h2>
+            </div>
+            <div class="cards-grid" style="grid-template-columns: repeat(3,1fr)">
+                <div class="card-stat clickable" onclick="verAuditoria('movimientos')">
+                    <div class="card-stat-icon"><i class="fa-solid fa-arrow-right-arrow-left"></i></div>
+                    <div class="card-stat-label">Movimientos</div>
+                    <div class="card-stat-sub">Entradas, salidas y ventas</div>
+                </div>
+                <div class="card-stat clickable" onclick="verAuditoria('precios')">
+                    <div class="card-stat-icon"><i class="fa-solid fa-money-bill-trend-up"></i></div>
+                    <div class="card-stat-label">Cambios de precio</div>
+                    <div class="card-stat-sub">Historial de precios</div>
+                </div>
+                <div class="card-stat clickable" onclick="verAuditoria('errores')">
+                    <div class="card-stat-icon"><i class="fa-solid fa-circle-exclamation"></i></div>
+                    <div class="card-stat-label">Log de errores</div>
+                    <div class="card-stat-sub">Alertas del sistema</div>
+                </div>
+            </div>
+            <div class="card" id="auditoria-contenido" style="margin-top:16px; display:none;">
+                <div class="card-header">
+                    <h3 id="auditoria-titulo">Auditoría</h3>
+                    <div style="display:flex; gap:8px;">
+                        <button class="btn btn-outline" onclick="descargarPDFAuditoria()">Exportar PDF</button>
+                        <button class="btn btn-primary" id="btn-notificar-auditoria" onclick="notificarAuditoria(this)">Notificar</button>
+                        <button class="btn btn-outline" onclick="document.getElementById('auditoria-contenido').style.display='none'">Cerrar</button>
+                    </div>
+                </div>
+                <div class="table-wrap" id="auditoria-tabla-wrap">
+                    <table>
+                        <thead id="auditoria-thead"></thead>
+                        <tbody id="auditoria-tbody">
+                            <tr><td class="loading">Cargando...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

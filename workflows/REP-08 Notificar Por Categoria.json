@@ -1,0 +1,188 @@
+{
+  "name": "REP-08 Notificar Por Categoria",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "notificar-por-categoria",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "c33f6a57-9011-48bf-b539-33c818e326b2",
+      "name": "Webhook",
+      "webhookId": "e57043cb-3e14-4825-81d2-6b19600a74c7"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SET search_path TO inventario;\n\nSELECT \n    c.nombre                                        AS categoria,\n    COUNT(DISTINCT v.id)                            AS total_ventas,\n    SUM(dv.cantidad)                                AS unidades_vendidas,\n    SUM(dv.cantidad * dv.precio_unitario)           AS ingresos_totales,\n    ROUND(\n        SUM(dv.cantidad * dv.precio_unitario) * 100.0 /\n        SUM(SUM(dv.cantidad * dv.precio_unitario)) OVER (), 2\n    )                                               AS porcentaje_ingresos\nFROM detalle_venta dv\nJOIN productos p  ON p.id = dv.producto_id\nJOIN categorias c ON c.id = p.categoria_id\nJOIN ventas v     ON v.id = dv.venta_id\nGROUP BY c.nombre\nORDER BY ingresos_totales DESC;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        208,
+        0
+      ],
+      "id": "11446503-9ca2-45c4-870b-a067691f6623",
+      "name": "Execute a SQL query",
+      "credentials": {
+        "postgres": {
+          "id": "9VBZqOBt6WDgRTdn",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\n\nconst totalIngresos = items.reduce((sum, i) => sum + parseFloat(i.json.ingresos_totales), 0);\n\nconst filasHTML = items.map(i => `\n    <tr>\n        <td><b>${i.json.categoria}</b></td>\n        <td>${i.json.total_ventas}</td>\n        <td>${i.json.unidades_vendidas}</td>\n        <td>Q${parseFloat(i.json.ingresos_totales).toFixed(2)}</td>\n        <td>${i.json.porcentaje_ingresos}%</td>\n    </tr>\n`).join('');\n\nconst telegramMsg = ` Ventas por categoría\n\n${items.map(i =>\n    `▪️ ${i.json.categoria}\\n   Ventas: ${i.json.total_ventas} | Ingresos: Q${parseFloat(i.json.ingresos_totales).toFixed(2)} | ${i.json.porcentaje_ingresos}%`\n).join('\\n')}\n\nTotal general: Q${totalIngresos.toFixed(2)}`;\n\nreturn [{\n    json: {\n        filas_html: filasHTML,\n        total_ingresos: totalIngresos.toFixed(2),\n        telegram: telegramMsg\n    }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        416,
+        0
+      ],
+      "id": "5d2b9005-f873-42d2-9b0a-6e5a719518b0",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "chatId": "7388546974",
+        "text": "={{ $json.telegram }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        624,
+        0
+      ],
+      "id": "78200ed0-7cd1-4d84-993b-b6a01db8e8ad",
+      "name": "Send a text message",
+      "webhookId": "9f0ad5f9-1244-4ee7-957b-9fb938203e00",
+      "credentials": {
+        "telegramApi": {
+          "id": "RkPVrYJQCEMJszGV",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fromEmail": "mjomlem.21@gmail.com",
+        "toEmail": "mjomlem.21@gmail.com",
+        "subject": "=Ventas por categoría — {{ $now.format('dd/MM/yyyy') }}",
+        "html": "=<h2> Ventas por categoría</h2>\n<table border=\"1\" cellpadding=\"8\" style=\"border-collapse:collapse;width:100%\">\n  <tr style=\"background:#e1f5ee\">\n    <th>Categoría</th><th>Ventas</th><th>Unidades</th><th>Ingresos</th><th>% del total</th>\n  </tr>\n  {{ $('Code in JavaScript').first().json.filas_html }}\n  <tr style=\"background:#f0f0f0\">\n    <td colspan=\"3\"><b>Total general</b></td>\n    <td colspan=\"2\"><b>Q{{ $('Code in JavaScript').first().json.total_ingresos }}</b></td>\n  </tr>\n</table>",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        784,
+        -16
+      ],
+      "id": "7f3ae201-8f24-4e5e-b172-be15e9c43514",
+      "name": "Send an Email",
+      "webhookId": "6c87c85c-fd6f-4ec0-877f-e611a36348a3",
+      "credentials": {
+        "smtp": {
+          "id": "9HwKAKjIDJqeSz1u",
+          "name": "Gmail SMTP"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        992,
+        -16
+      ],
+      "id": "9d4309f4-83f0-4dc9-945f-631da950671b",
+      "name": "Respond to Webhook"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Execute a SQL query",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute a SQL query": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Send a text message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send a text message": {
+      "main": [
+        [
+          {
+            "node": "Send an Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send an Email": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
+    "errorWorkflow": "4EOToqAqaYg788QW",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "versionId": "4943028c-0c15-4b08-bebc-2156a56aee52",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "a754d5b26c3afea1a6891fc0c770d0c72bb86b3273f13b42c964bbca1908b096"
+  },
+  "id": "S0FuI939qqQ4Sxxd",
+  "tags": []
+}

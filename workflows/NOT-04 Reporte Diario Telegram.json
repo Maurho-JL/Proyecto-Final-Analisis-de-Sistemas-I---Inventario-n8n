@@ -1,0 +1,109 @@
+{
+  "name": "NOT-04 Reporte Diario Telegram",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 8
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        0,
+        0
+      ],
+      "id": "0a438aac-6bb5-42a1-9993-92160c94b7d3",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SET search_path TO inventario;\n\nSELECT \n    (SELECT COUNT(DISTINCT id) \n     FROM ventas \n     WHERE fecha::DATE = CURRENT_DATE)          AS total_ventas,\n\n    (SELECT COALESCE(SUM(total), 0) \n     FROM ventas \n     WHERE fecha::DATE = CURRENT_DATE)          AS ingresos_totales,\n\n    (SELECT COALESCE(AVG(total), 0) \n     FROM ventas \n     WHERE fecha::DATE = CURRENT_DATE)          AS ticket_promedio,\n\n    (SELECT COUNT(id) \n     FROM alertas \n     WHERE estado = 'pendiente')                AS alertas_pendientes;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        208,
+        0
+      ],
+      "id": "4ce4b3e6-f44a-4c65-97e9-db0f6b70e1f0",
+      "name": "Execute a SQL query",
+      "credentials": {
+        "postgres": {
+          "id": "9VBZqOBt6WDgRTdn",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "7388546974",
+        "text": "= Reporte del día {{ $now.format('dd/MM/yyyy') }}  Ventas del día: {{ $json.total_ventas }} Ingresos totales: Q{{ $json.ingresos_totales }} Ticket promedio: Q{{ $json.ticket_promedio }} Alertas pendientes: {{ $json.alertas_pendientes }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        416,
+        0
+      ],
+      "id": "2b8b9b01-b01f-4a17-82fc-3f7f89a16a4a",
+      "name": "Send a text message",
+      "webhookId": "bcab3541-bc1d-4a99-bd1a-a46b9b294e97",
+      "credentials": {
+        "telegramApi": {
+          "id": "RkPVrYJQCEMJszGV",
+          "name": "Telegram account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Execute a SQL query",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute a SQL query": {
+      "main": [
+        [
+          {
+            "node": "Send a text message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
+    "errorWorkflow": "4EOToqAqaYg788QW",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "versionId": "3af6145a-7a67-4f15-a83b-0862f7019bdc",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "a754d5b26c3afea1a6891fc0c770d0c72bb86b3273f13b42c964bbca1908b096"
+  },
+  "id": "c06GQXM0gvvWTSCy",
+  "tags": []
+}

@@ -1,0 +1,188 @@
+{
+  "name": "VEN-06 Notificar Historial Ventas",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "notificar-historial-ventas-get",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "39406b7e-f1f9-4e6a-a0f2-9503a0b5dd70",
+      "name": "Webhook",
+      "webhookId": "731cc7e8-9749-4b7a-8cbe-0f0b4c8850ef"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SET search_path TO inventario;\n\nSELECT \n    v.id                                    AS venta_id,\n    cl.nombre                               AS cliente,\n    v.fecha::DATE                           AS fecha,\n    v.total,\n    STRING_AGG(p.nombre || ' (x' || dv.cantidad || ')', ', ') AS productos\nFROM ventas v\nJOIN clientes cl      ON cl.id = v.cliente_id\nJOIN detalle_venta dv ON dv.venta_id = v.id\nJOIN productos p      ON p.id = dv.producto_id\nGROUP BY v.id, cl.nombre, v.fecha, v.total\nORDER BY v.fecha DESC\nLIMIT 10;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        208,
+        0
+      ],
+      "id": "907db780-346b-4322-b369-fcafec72154a",
+      "name": "Execute a SQL query",
+      "credentials": {
+        "postgres": {
+          "id": "9VBZqOBt6WDgRTdn",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\n\nconst totalGeneral = items.reduce((sum, i) => sum + parseFloat(i.json.total), 0);\n\nconst filasHTML = items.map(i => `\n    <tr>\n        <td>#${i.json.venta_id}</td>\n        <td>${i.json.cliente}</td>\n        <td>${i.json.fecha}</td>\n        <td>${i.json.productos}</td>\n        <td><b>Q${parseFloat(i.json.total).toFixed(2)}</b></td>\n    </tr>\n`).join('');\n\nconst telegramMsg = ` Historial de ventas\n\nTotal ventas: ${items.length}\nTotal ingresos: Q${totalGeneral.toFixed(2)}\n\nÚltimas ventas:\n${items.map(i => \n    ` #${i.json.venta_id} | ${i.json.cliente}\\n   ${i.json.productos}\\n   Total: Q${parseFloat(i.json.total).toFixed(2)} | ${i.json.fecha}`\n).join('\\n\\n')}`;\n\nreturn [{\n    json: {\n        total_ventas: items.length,\n        total_general: totalGeneral.toFixed(2),\n        filas_html: filasHTML,\n        telegram: telegramMsg\n    }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        416,
+        0
+      ],
+      "id": "78e9d96f-9b6d-4e85-9663-07ff255bb122",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "chatId": "7388546974",
+        "text": "={{ $json.telegram }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        624,
+        0
+      ],
+      "id": "c5b6fc20-4a81-4544-a272-04a0d7e37415",
+      "name": "Send a text message",
+      "webhookId": "83af42f9-2f3f-4297-9589-589ce2372a23",
+      "credentials": {
+        "telegramApi": {
+          "id": "RkPVrYJQCEMJszGV",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fromEmail": "mjomlem.21@gmail.com",
+        "toEmail": "mjomlem.21@gmail.com",
+        "subject": "=Historial de ventas — {{ $now.format('dd/MM/yyyy') }}",
+        "html": "=<h2> Historial de ventas</h2>\n<table border=\"1\" cellpadding=\"8\" style=\"border-collapse:collapse;width:50%\">\n  <tr style=\"background:#e1f5ee\">\n    <th>Campo</th><th>Valor</th>\n  </tr>\n  <tr><td>Total ventas</td><td>{{ $('Code in JavaScript').first().json.total_ventas }}</td></tr>\n  <tr><td>Total ingresos</td><td><b>Q{{ $('Code in JavaScript').first().json.total_general }}</b></td></tr>\n</table>\n<br>\n<table border=\"1\" cellpadding=\"8\" style=\"border-collapse:collapse;width:100%\">\n  <tr style=\"background:#e1f5ee\">\n    <th>ID</th><th>Cliente</th><th>Fecha</th><th>Productos</th><th>Total</th>\n  </tr>\n  {{ $('Code in JavaScript').first().json.filas_html }}\n</table>",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        832,
+        0
+      ],
+      "id": "e774162e-5c78-4ded-aae5-4c6804412f33",
+      "name": "Send an Email",
+      "webhookId": "433e43d7-38b3-4602-95cb-05782af7d85b",
+      "credentials": {
+        "smtp": {
+          "id": "9HwKAKjIDJqeSz1u",
+          "name": "Gmail SMTP"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        1040,
+        0
+      ],
+      "id": "9d4d3bdd-6bf0-40c3-bf3f-e5b2c541b3cb",
+      "name": "Respond to Webhook"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Execute a SQL query",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute a SQL query": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Send a text message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send a text message": {
+      "main": [
+        [
+          {
+            "node": "Send an Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send an Email": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
+    "errorWorkflow": "4EOToqAqaYg788QW",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "versionId": "fe6a75e8-0b41-4cc5-8346-df7082bdd2e2",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "a754d5b26c3afea1a6891fc0c770d0c72bb86b3273f13b42c964bbca1908b096"
+  },
+  "id": "eplWoJ5pvtNtGbYP",
+  "tags": []
+}

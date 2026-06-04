@@ -1,0 +1,97 @@
+{
+  "name": "INV-01 Consultar Stock",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "consultar-stock",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "80bf0857-4464-4074-9759-4587d9d0260b",
+      "name": "Webhook",
+      "webhookId": "0d4955b2-5095-4cee-b01b-e60cce3bb75f"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SET search_path TO inventario;\n\nSELECT \n    p.id,\n    p.codigo,\n    p.nombre,\n    c.nombre        AS categoria,\n    p.precio_venta,\n    p.stock_actual,\n    p.stock_minimo,\n    p.stock_maximo,\n    CASE \n        WHEN p.stock_actual = 0               THEN 'agotado'\n        WHEN p.stock_actual <= p.stock_minimo THEN 'stock_bajo'\n        ELSE 'disponible'\n    END             AS estado\nFROM productos p\nJOIN categorias c ON c.id = p.categoria_id\nORDER BY p.id ASC;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        208,
+        0
+      ],
+      "id": "50abc81f-c2df-4491-9407-495d74110766",
+      "name": "Execute a SQL query",
+      "credentials": {
+        "postgres": {
+          "id": "9VBZqOBt6WDgRTdn",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "allIncomingItems",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        416,
+        0
+      ],
+      "id": "18b13388-a5b4-4ab0-80b1-5b5cdc4c4ec3",
+      "name": "Respond to Webhook"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Execute a SQL query",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute a SQL query": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
+    "errorWorkflow": "4EOToqAqaYg788QW",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "versionId": "3d5dbd64-e9f8-4ada-8287-9d8c8af0ece6",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "a754d5b26c3afea1a6891fc0c770d0c72bb86b3273f13b42c964bbca1908b096"
+  },
+  "id": "msljuX9XLRGMUB5N",
+  "tags": []
+}

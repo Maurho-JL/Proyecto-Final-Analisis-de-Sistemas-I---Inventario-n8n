@@ -1,0 +1,229 @@
+{
+  "name": "AUD-04 Detectar Ventas Duplicadas",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        0,
+        0
+      ],
+      "id": "b1b9c533-a828-49e6-9b12-d71eabfef0e5",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SET search_path TO inventario;\n\nSELECT \n    v.cliente_id,\n    cl.nombre       AS cliente,\n    v.total,\n    v.fecha::DATE   AS fecha,\n    COUNT(v.id)     AS cantidad_ventas\nFROM ventas v\nJOIN clientes cl ON cl.id = v.cliente_id\nWHERE v.fecha::DATE = CURRENT_DATE\nGROUP BY v.cliente_id, cl.nombre, v.total, v.fecha::DATE\nHAVING COUNT(v.id) > 1\nORDER BY cantidad_ventas DESC;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        208,
+        0
+      ],
+      "id": "9457f26f-ca4a-4e8c-a1f6-91ca1b563094",
+      "name": "Execute a SQL query",
+      "credentials": {
+        "postgres": {
+          "id": "9VBZqOBt6WDgRTdn",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "535aedda-5e87-426a-b0fe-5df9688354f6",
+              "leftValue": "={{ $items().length }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        352,
+        0
+      ],
+      "id": "f7b435ac-d13b-4e06-a594-6fae8909d538",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\n\nconst filas = items.map(i =>\n  `<tr>\n    <td>${i.json.cliente}</td>\n    <td>Q${i.json.total}</td>\n    <td>${i.json.fecha}</td>\n    <td style=\"color:red\"><b>${i.json.cantidad_ventas}</b></td>\n  </tr>`\n).join('');\n\nconst telegramMsg = ` Ventas Duplicadas Detectadas\n${new Date().toLocaleDateString('es-GT')}\n\nSe encontraron ${items.length} posibles duplicados:\n\n${items.map(i =>\n  ` ${i.json.cliente}\\n   Total: Q${i.json.total} | Repetidas: ${i.json.cantidad_ventas}x`\n).join('\\n')}\n\nRevisar en el sistema urgente.`;\n\nreturn [{\n  json: {\n    total: items.length,\n    tabla: filas,\n    telegram: telegramMsg\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        560,
+        -96
+      ],
+      "id": "130ce9d4-2dce-4678-a8a7-d987d189d03a",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "chatId": "7388546974",
+        "text": "={{ $json.telegram }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        768,
+        -96
+      ],
+      "id": "e33182a5-4dd5-4712-a5df-9689ddd67449",
+      "name": "Send a text message",
+      "webhookId": "b9164922-8eef-4c64-8b8c-55761463065e",
+      "credentials": {
+        "telegramApi": {
+          "id": "RkPVrYJQCEMJszGV",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fromEmail": "mjomlem.21@gmail.com",
+        "toEmail": "mjomlem.21@gmail.com",
+        "subject": "Ventas duplicadas detectadas — {{ $now.format('dd/MM/yyyy') }}",
+        "html": "=<h2> Ventas Duplicadas Detectadas</h2>\n<p><b>Total duplicados:</b> {{ $('Code in JavaScript').first().json.total }}</p>\n<table border=\"1\" cellpadding=\"8\" style=\"border-collapse:collapse;width:100%\">\n  <tr style=\"background:#ffecec\">\n    <th>Cliente</th>\n    <th>Total</th>\n    <th>Fecha</th>\n    <th>Veces repetida</th>\n  </tr>\n  {{ $('Code in JavaScript').first().json.tabla }}\n</table>",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        976,
+        -96
+      ],
+      "id": "1ecd614c-a82a-4c63-9c99-da0611fff2bc",
+      "name": "Send an Email",
+      "webhookId": "3c5a26a8-fbb5-4cc5-9c4f-cd2d09581d23",
+      "credentials": {
+        "smtp": {
+          "id": "9HwKAKjIDJqeSz1u",
+          "name": "Gmail SMTP"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        560,
+        96
+      ],
+      "id": "7f39d423-a9e7-4bab-a42e-5c4850c733b2",
+      "name": "No Operation, do nothing"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Execute a SQL query",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute a SQL query": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "No Operation, do nothing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Send a text message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send a text message": {
+      "main": [
+        [
+          {
+            "node": "Send an Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
+    "errorWorkflow": "4EOToqAqaYg788QW",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "versionId": "5b6bff02-d977-4c63-a23a-12e7f6cae0ce",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "a754d5b26c3afea1a6891fc0c770d0c72bb86b3273f13b42c964bbca1908b096"
+  },
+  "id": "PJcAtYNF9QIlGGOC",
+  "tags": []
+}
